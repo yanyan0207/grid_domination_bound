@@ -56,6 +56,13 @@ pub fn dfs(
             }
         }
 
+        // 妥当であれば枝刈りを確認
+        if valid {
+            let current_cost = cost(&stack);
+            if current_cost >= min_cost {
+                valid = false;
+            }
+        }
         // valid が false なら次の行を試す
         if !valid {
             _next(&mut stack, valid_rows.len());
