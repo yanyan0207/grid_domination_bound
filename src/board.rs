@@ -60,6 +60,15 @@ fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool) -> i64 {
     // コストは遷移先の石の数
     // 作られる遷移コスト行列は、遷移先の行が行、遷移元の行が列となる
     let cost_matrix = build_transition_cost_matrix(&valid_rows, problem, true, true, &row_costs);
+    let transition_cnt = cost_matrix
+        .iter()
+        .map(|row| row.iter().filter(|&x| x != &INF).count())
+        .sum::<usize>();
+    println!(
+        "cost_matrix count = {}, valid rate = {:0.2}%",
+        transition_cnt,
+        transition_cnt as f64 / (valid_cnt * valid_cnt) as f64 * 100.0
+    );
 
     // 遷移コストの計算
     // 1行目の遷移コストを計算

@@ -1,5 +1,8 @@
 //! 有効な行を 1 つずつ選んで並べ、最小コストを求める（DFS）
-use crate::rules::{Cell, Problem, is_valid_row, is_valid_transition};
+use crate::{
+    rules::{Cell, Problem, is_valid_row},
+    transfer::build_transition_pairs,
+};
 
 /// 有効な行 valid_rows を rows 行並べたときの最小コストを DFS で求める（未実装）
 ///
@@ -17,17 +20,28 @@ pub fn dfs(
 
     let mut stack = vec![0];
 
-    fn _next(stack: &mut Vec<usize>, valid_cnt: usize) {
+    fn _next(stack: &mut Vec<usize>, valid_cnt: usize, transition_pairs: &[Vec<usize>]) {
         loop {
             // 次の番号を試す
             let length = stack.len();
             let last = stack[length - 1];
-            if last < valid_cnt - 1 {
-                stack[length - 1] += 1;
-                break;
+
+            if length == 1 {
+                if last < valid_cnt - 1 {
+                    stack[length - 1] += 1;
+                    break;
+                }
+            } else {
+                let last2 = stack[length - 2];
+                let valid_next_rows = &transition_pairs[last2];
+
+                if let Some(&next) = valid_next_rows.iter().find(|&&x| x > last) {
+                    stack[length - 1] = next;
+                    break;
+                }
             }
 
-            // 次の番号が valid_cnt - 1 以上の場合は前に戻る
+            // 次の候補が無い場合は前に戻る
             stack.pop();
 
             // 空になったら終了
@@ -39,18 +53,17 @@ pub fn dfs(
 
     let mut min_cost = i64::MAX;
     let mut min_pattern = vec![];
+    let transition_pairs = build_transition_pairs(valid_rows, problem, true, true);
     while !stack.is_empty() {
         // 問題ないか確認
-        let mut valid;
+        let mut valid = true;
         if stack.len() == 1 {
             // 最初の行の場合は行単体の有効性を確認
             valid = is_valid_row(&valid_rows[stack[0]], true, true, true);
         } else {
-            let prev_row = &valid_rows[stack[stack.len() - 2]];
-            let next_row = &valid_rows[stack[stack.len() - 1]];
-            // 2 行目以降の場合は前の行との遷移の有効性を確認
-            valid = is_valid_transition(prev_row, next_row, problem, true, true);
-            if valid && stack.len() == rows {
+            // 最後の行の場合有効性を確認
+            if stack.len() == rows {
+                let next_row = &valid_rows[stack[stack.len() - 1]];
                 // 最後の行の場合は、行内にまだ必要なセルが残っていないか確認
                 valid = !next_row.contains(&Cell::NeedOne);
             }
@@ -65,7 +78,7 @@ pub fn dfs(
         }
         // valid が false なら次の行を試す
         if !valid {
-            _next(&mut stack, valid_rows.len());
+            _next(&mut stack, valid_rows.len(), &transition_pairs);
             continue;
         }
 
@@ -81,7 +94,7 @@ pub fn dfs(
             min_cost = current_cost;
             min_pattern = stack.clone();
         }
-        _next(&mut stack, valid_rows.len());
+        _next(&mut stack, valid_rows.len(), &transition_pairs);
     }
     (min_cost, min_pattern)
 }

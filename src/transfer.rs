@@ -34,3 +34,22 @@ pub fn build_transition_cost_matrix(
         })
         .collect()
 }
+
+pub fn build_transition_pairs(
+    rows: &[Vec<Cell>],
+    problem: Problem,
+    top_is_edge: bool,
+    bottom_is_edge: bool,
+) -> Vec<Vec<usize>> {
+    let mut ret = vec![];
+    for prev_row in rows {
+        let mut valid_next_rows = vec![];
+        for (j, next_row) in rows.iter().enumerate() {
+            if is_valid_transition(prev_row, next_row, problem, top_is_edge, bottom_is_edge) {
+                valid_next_rows.push(j);
+            }
+        }
+        ret.push(valid_next_rows);
+    }
+    ret
+}
