@@ -1,6 +1,7 @@
 //! コマンドラインの入口。引数を解析して、各サブコマンドの処理に振り分ける
 
 mod board;
+mod matrix;
 mod rules;
 mod transfer;
 
@@ -27,6 +28,9 @@ enum Command {
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
+        /// 盤面の表示で Ok と NeedOne も区別する
+        #[arg(short, long)]
+        verbose: bool,
     },
 }
 
@@ -50,6 +54,13 @@ impl From<ProblemArg> for Problem {
 
 fn main() {
     match Cli::parse().command {
-        Command::Board { n, m, problem } => board::board(n, m, problem.into()),
+        Command::Board {
+            n,
+            m,
+            problem,
+            verbose,
+        } => {
+            board::board(n, m, problem.into(), verbose);
+        }
     }
 }
