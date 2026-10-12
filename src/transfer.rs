@@ -1,6 +1,7 @@
 //! 転送行列（行から行への遷移コスト）の作成
 
 use crate::{
+    cost::Cost,
     matrix::Matrix,
     rules::{Cell, Problem, is_valid_transition},
 };
@@ -11,12 +12,13 @@ pub const INF: i64 = 1_000_000_000;
 ///
 /// 遷移可能な場合は cost(遷移元, 遷移先)、遷移不可能な場合は無限大とする
 /// 計算の都合上、next_row -> prev_row の順で行列を作る
+#[allow(unused)]
 pub fn build_transition_cost_matrix(
     rows: &[Vec<Cell>],
     problem: Problem,
+    cost: Cost,
     left_is_edge: bool,
     right_is_edge: bool,
-    cost: impl Fn(&[Cell], &[Cell]) -> i64,
 ) -> Matrix {
     rows.iter()
         .map(|next_row| {
@@ -24,7 +26,7 @@ pub fn build_transition_cost_matrix(
                 .map(|prev_row| {
                     if is_valid_transition(prev_row, next_row, problem, left_is_edge, right_is_edge)
                     {
-                        cost(prev_row, next_row)
+                        cost.transition(prev_row, next_row, left_is_edge, right_is_edge)
                     } else {
                         INF
                     }
@@ -32,6 +34,33 @@ pub fn build_transition_cost_matrix(
                 .collect()
         })
         .collect()
+}
+
+/// 行 rows の間の遷移コスト行列を作る
+///
+/// 遷移可能な場合は cost(遷移元, 遷移先)、遷移不可能な場合は無限大とする
+/// 計算の都合上、next_row -> prev_row の順で行列を作る
+pub fn build_transition_costs(
+    rows: &[Vec<Cell>],
+    problem: Problem,
+    cost: Cost,
+    left_is_edge: bool,
+    right_is_edge: bool,
+) -> Vec<Vec<(usize, i64)>> {
+    // 遷移先の行ごとに有効な遷移を計算
+    let mut transition_costs: Vec<Vec<(usize, i64)>> = vec![];
+    for next_row in rows {
+        // 遷移元の行から有効な遷移のみのコストを保存する
+        let mut valid_transitions = vec![];
+        for (j, prev_row) in rows.iter().enumerate() {
+            if is_valid_transition(prev_row, next_row, problem, left_is_edge, right_is_edge) {
+                let value = cost.transition(prev_row, next_row, left_is_edge, right_is_edge);
+                valid_transitions.push((j, value));
+            }
+        }
+        transition_costs.push(valid_transitions);
+    }
+    transition_costs
 }
 
 pub fn build_transition_pairs(

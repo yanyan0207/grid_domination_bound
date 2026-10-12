@@ -1,11 +1,13 @@
 //! 盤全体（n × m）の最小コストの計算
 
+use std::time::Instant;
+
 use crate::{
     cost::Cost,
     dfs::dfs,
     matrix::Vector,
     rules::{Cell, Problem, list_valid_rows},
-    transfer::{INF, build_transition_cost_matrix},
+    transfer::build_transition_costs,
 };
 
 /// 最小コストを求める方式
@@ -30,7 +32,7 @@ pub fn board(
         todo!("loss は未実装");
     }
     match method {
-        Method::Dp => dp(rows, cols, problem, verbose, cost),
+        Method::Dp => dp(rows, cols, problem, cost, verbose),
         Method::Dfs => {
             // 有効な行のリストを取得(左端が端、右端が端)
             let valid_rows = list_valid_rows(cols, true, true);
@@ -60,7 +62,7 @@ pub fn board(
 }
 
 /// 転送行列（DP）で最小コストを求める
-fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool, cost: Cost) -> i64 {
+fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> i64 {
     println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
 
     let left_is_edge = true;
@@ -68,62 +70,74 @@ fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool, cost: Cost) -> 
     let top_is_edge = true;
 
     // 有効な行のリストを取得(左端が端、右端が端)
+    let valid_rows_start = Instant::now();
     let valid_rows = list_valid_rows(cols, left_is_edge, right_is_edge);
     let valid_cnt = valid_rows.len();
-    println!("valid_count = {valid_cnt}");
+    println!(
+        "valid_count = {valid_cnt} ({:.3}s)",
+        valid_rows_start.elapsed().as_secs_f64()
+    );
 
     // 遷移コストを取得
     // コストは --cost で選んだもの
     // 作られる遷移コスト行列は、遷移先の行が行、遷移元の行が列となる
-    let cost_matrix = build_transition_cost_matrix(
-        &valid_rows,
-        problem,
-        left_is_edge,
-        right_is_edge,
-        |prev, next| cost.transition(prev, next, left_is_edge, right_is_edge),
-    );
-    let transition_cnt = cost_matrix
-        .iter()
-        .map(|row| row.iter().filter(|&x| x != &INF).count())
-        .sum::<usize>();
+    let cost_matrix_start = Instant::now();
+    let cost_matrix =
+        build_transition_costs(&valid_rows, problem, cost, left_is_edge, right_is_edge);
+    let cost_matrix_seconds = cost_matrix_start.elapsed().as_secs_f64();
+    let transition_cnt = cost_matrix.iter().map(|row| row.len()).sum::<usize>();
     println!(
-        "cost_matrix count = {}, valid rate = {:0.2}%",
+        "cost_matrix count = {}, valid rate = {:0.2}% ({:.3}s)",
         transition_cnt,
-        transition_cnt as f64 / (valid_cnt * valid_cnt) as f64 * 100.0
+        transition_cnt as f64 / (valid_cnt * valid_cnt) as f64 * 100.0,
+        cost_matrix_seconds
     );
 
     // 遷移コストの計算
     // 1行目の遷移コストを計算
-    let mut dp = valid_rows
+    let dp = valid_rows
         .iter()
         .map(|row| cost.first_row(row, left_is_edge, right_is_edge, top_is_edge))
         .collect::<Vector>();
+    let mut dp_history = vec![dp.clone()];
 
     // 遷移の経路を保存
     let mut transition_path: Vec<Vec<usize>> = vec![];
 
     // 残りの行の遷移コストを計算
-    for _ in 1..rows {
+    let start = Instant::now();
+    for row in 1..rows {
         // 対象の状態に遷移するためのコストを遷移先ごとに計算
-        let mut min_index_list = vec![];
-        let mut next_dp = vec![];
-        for next_index in 0..valid_cnt {
-            let new_dp = &dp + &cost_matrix[next_index];
-            let min_index = new_dp.min_index();
-
-            next_dp.push(new_dp[min_index]);
-            min_index_list.push(min_index);
+        let mut min_index_list = Vec::with_capacity(valid_cnt);
+        let mut next_dp = Vec::with_capacity(valid_cnt);
+        let dp = dp_history.last().unwrap();
+        for costs in cost_matrix.iter() {
+            // 現在の行のインデックス next_index に対して、遷移元の行からの最小コストを計算
+            let min_costs = costs
+                .iter()
+                .map(|(prev_index, val)| (prev_index, val + dp[*prev_index]))
+                .min_by_key(|&(_prev_index, val)| val)
+                .unwrap();
+            min_index_list.push(*min_costs.0);
+            next_dp.push(min_costs.1);
         }
         transition_path.push(min_index_list);
-        dp = Vector(next_dp);
+        dp_history.push(Vector(next_dp));
+
+        // 進捗を標準エラー出力に、同じ行を上書きして表示する
+        eprint!(
+            "\r{row}/{} 行 ({:.1}s)",
+            rows - 1,
+            start.elapsed().as_secs_f64()
+        );
     }
+    eprintln!();
 
     // 最後のパスとして使えないパスをINFにする
-    dp = valid_rows
-        .iter()
-        .zip(dp.iter())
-        .map(|(row, dp_value)| dp_value + cost.last_row_addition(left_is_edge, right_is_edge, row))
-        .collect::<Vector>();
+    let dp = dp_history.last_mut().unwrap();
+    for (i, valid_row) in valid_rows.iter().enumerate() {
+        dp[i] += cost.last_row_addition(left_is_edge, right_is_edge, valid_row);
+    }
 
     // 最小コストとその経路を出力
     let last_min_index = dp.min_index();

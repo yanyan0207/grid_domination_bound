@@ -2,6 +2,7 @@
 
 use std::ops::{Add, Deref, DerefMut};
 
+#[allow(unused)]
 pub struct Matrix(pub Vec<Vector>);
 
 /// 成分が i64 のベクトル
