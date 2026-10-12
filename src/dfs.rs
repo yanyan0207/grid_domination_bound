@@ -1,6 +1,6 @@
 //! 有効な行を 1 つずつ選んで並べ、最小コストを求める（DFS）
 use crate::{
-    rules::{Cell, Problem, is_valid_row},
+    rules::{Cell, Edges, Problem, is_valid_row},
     transfer::build_transition_pairs,
 };
 
@@ -53,13 +53,13 @@ pub fn dfs(
 
     let mut min_cost = i64::MAX;
     let mut min_pattern = vec![];
-    let transition_pairs = build_transition_pairs(valid_rows, problem, true, true);
+    let transition_pairs = build_transition_pairs(valid_rows, problem, Edges::ALL.row());
     while !stack.is_empty() {
         // 問題ないか確認
         let mut valid = true;
         if stack.len() == 1 {
             // 最初の行の場合は行単体の有効性を確認
-            valid = is_valid_row(&valid_rows[stack[0]], true, true, true);
+            valid = is_valid_row(&valid_rows[stack[0]], Edges::ALL);
         } else {
             // 最後の行の場合有効性を確認
             if stack.len() == rows {

@@ -1,7 +1,7 @@
 //! コストの決め方
 
 use crate::{
-    rules::{Cell, is_valid_row},
+    rules::{Cell, Edges, RowEdges, is_valid_row},
     transfer::INF,
 };
 
@@ -17,31 +17,20 @@ pub enum Cost {
 impl Cost {
     /// 1 行目に行 row を置いたときのコスト
     ///
-    /// top_is_edge、行の左端が盤の端かどうか
-    pub fn first_row(
-        self,
-        row: &[Cell],
-        left_is_edge: bool,
-        right_is_edge: bool,
-        top_is_edge: bool,
-    ) -> i64 {
-        if top_is_edge && !is_valid_row(row, left_is_edge, right_is_edge, top_is_edge) {
+    /// edges は盤の四方が端かどうか
+    pub fn first_row(self, row: &[Cell], edges: Edges) -> i64 {
+        if edges.top && !is_valid_row(row, edges) {
             return INF;
         }
 
         match self {
             Cost::Stones => stone_count(row),
-            Cost::Loss => first_row_loss(row, left_is_edge, right_is_edge, top_is_edge),
+            Cost::Loss => first_row_loss(row, edges),
         }
     }
 
     /// 最後の行に行 row を置いたときの追加コスト
-    pub fn last_row_addition(
-        self,
-        _unused_left_is_edge: bool,
-        _unused_right_is_edge: bool,
-        row: &[Cell],
-    ) -> i64 {
+    pub fn last_row_addition(self, _unused_row_edges: RowEdges, row: &[Cell]) -> i64 {
         if row.contains(&Cell::NeedOne) {
             return INF;
         }
@@ -53,18 +42,12 @@ impl Cost {
 
     /// 前の行 prev の次に行 next を置いたときに増えるコスト
     ///
-    /// top_is_edge / bottom_is_edge は、行の左端 / 右端が盤の端かどうか
-    pub fn transition(
-        self,
-        prev: &[Cell],
-        next: &[Cell],
-        left_is_edge: bool,
-        right_is_edge: bool,
-    ) -> i64 {
+    /// row_edges は、行の左端 / 右端が盤の端かどうか
+    pub fn transition(self, prev: &[Cell], next: &[Cell], row_edges: RowEdges) -> i64 {
         match self {
             // 石の数は前の行も端も使わない
             Cost::Stones => stone_count(next),
-            Cost::Loss => transition_loss(prev, next, left_is_edge, right_is_edge),
+            Cost::Loss => transition_loss(prev, next, row_edges),
         }
     }
 }
@@ -75,7 +58,13 @@ fn stone_count(row: &[Cell]) -> i64 {
 }
 
 /// 1 行目に行 row を置いたときの loss
-fn first_row_loss(row: &[Cell], left_is_edge: bool, right_is_edge: bool, top_is_edge: bool) -> i64 {
+fn first_row_loss(row: &[Cell], edges: Edges) -> i64 {
+    let Edges {
+        top: top_is_edge,
+        bottom: _bottom_is_edge,
+        left: left_is_edge,
+        right: right_is_edge,
+    } = edges;
     let mut cost = 0;
 
     // 石がエッジにあれば+1
@@ -101,7 +90,11 @@ fn first_row_loss(row: &[Cell], left_is_edge: bool, right_is_edge: bool, top_is_
 }
 
 /// 前の行 prev の次に行 next を置いたときに増える loss
-fn transition_loss(prev: &[Cell], next: &[Cell], left_is_edge: bool, right_is_edge: bool) -> i64 {
+fn transition_loss(prev: &[Cell], next: &[Cell], row_edges: RowEdges) -> i64 {
+    let RowEdges {
+        left: left_is_edge,
+        right: right_is_edge,
+    } = row_edges;
     let mut cost = 0;
 
     // 石がエッジにあれば+1

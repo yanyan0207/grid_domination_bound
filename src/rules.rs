@@ -17,6 +17,43 @@ impl std::fmt::Display for Problem {
     }
 }
 
+/// 盤の四方が盤の端かどうか
+///
+/// 行を上から順に並べるとき、top は 1 行目の外側、bottom は最後の行の外側、
+/// left / right は各行の左端 / 右端の外側
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Edges {
+    pub top: bool,
+    pub bottom: bool,
+    pub left: bool,
+    pub right: bool,
+}
+
+/// 行の左端 / 右端が盤の端かどうか
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct RowEdges {
+    pub left: bool,
+    pub right: bool,
+}
+
+impl Edges {
+    /// 行の左端 / 右端だけを取り出す
+    pub fn row(self) -> RowEdges {
+        RowEdges {
+            left: self.left,
+            right: self.right,
+        }
+    }
+
+    /// 四方とも盤の端（盤全体）
+    pub const ALL: Edges = Edges {
+        top: true,
+        bottom: true,
+        left: true,
+        right: true,
+    };
+}
+
 /// セルの状態。前の行と同じ行の石を数えた時点で、次の行に何が必要かを表す
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cell {
@@ -29,7 +66,7 @@ pub enum Cell {
 }
 
 /// 指定された幅のすべての可能な行のリストから、問題に従って有効な行だけを返す
-pub fn list_valid_rows(width: usize, left_is_edge: bool, right_is_edge: bool) -> Vec<Vec<Cell>> {
+pub fn list_valid_rows(width: usize, row_edges: RowEdges) -> Vec<Vec<Cell>> {
     let mut valid_rows: Vec<Vec<Cell>> = Vec::new();
     for i in 0..(3u64.pow(width as u32)) {
         let mut row = Vec::with_capacity(width);
@@ -43,7 +80,14 @@ pub fn list_valid_rows(width: usize, left_is_edge: bool, right_is_edge: bool) ->
             });
             n /= 3;
         }
-        if is_valid_row(&row, left_is_edge, right_is_edge, false) {
+        // 途中の行として有効か（上下は端でない）
+        let edges = Edges {
+            top: false,
+            bottom: false,
+            left: row_edges.left,
+            right: row_edges.right,
+        };
+        if is_valid_row(&row, edges) {
             valid_rows.push(row);
         }
     }
@@ -55,9 +99,12 @@ pub fn is_valid_transition(
     prev_row: &[Cell],
     next_row: &[Cell],
     problem: Problem,
-    left_is_edge: bool,
-    right_is_edge: bool,
+    row_edges: RowEdges,
 ) -> bool {
+    let RowEdges {
+        left: left_is_edge,
+        right: right_is_edge,
+    } = row_edges;
     // 前行を確認する
     for i in 0..prev_row.len() {
         // 次の石との関係を確認
@@ -112,12 +159,13 @@ pub fn is_valid_transition(
 }
 
 /// 指定された行が問題に従って有効かどうかを判定
-pub fn is_valid_row(
-    row: &[Cell],
-    left_is_edge: bool,
-    right_is_edge: bool,
-    top_is_edge: bool,
-) -> bool {
+pub fn is_valid_row(row: &[Cell], edges: Edges) -> bool {
+    let Edges {
+        top: top_is_edge,
+        bottom: _bottom_is_edge,
+        left: left_is_edge,
+        right: right_is_edge,
+    } = edges;
     for (i, cell) in row.iter().enumerate() {
         // 石なら常に有効
         if cell == &Cell::Stone {

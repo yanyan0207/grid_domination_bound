@@ -3,7 +3,7 @@
 use crate::{
     cost::Cost,
     matrix::Matrix,
-    rules::{Cell, Problem, is_valid_transition},
+    rules::{Cell, Problem, RowEdges, is_valid_transition},
 };
 
 pub const INF: i64 = 1_000_000_000;
@@ -17,16 +17,14 @@ pub fn build_transition_cost_matrix(
     rows: &[Vec<Cell>],
     problem: Problem,
     cost: Cost,
-    left_is_edge: bool,
-    right_is_edge: bool,
+    row_edges: RowEdges,
 ) -> Matrix {
     rows.iter()
         .map(|next_row| {
             rows.iter()
                 .map(|prev_row| {
-                    if is_valid_transition(prev_row, next_row, problem, left_is_edge, right_is_edge)
-                    {
-                        cost.transition(prev_row, next_row, left_is_edge, right_is_edge)
+                    if is_valid_transition(prev_row, next_row, problem, row_edges) {
+                        cost.transition(prev_row, next_row, row_edges)
                     } else {
                         INF
                     }
@@ -44,8 +42,7 @@ pub fn build_transition_costs(
     rows: &[Vec<Cell>],
     problem: Problem,
     cost: Cost,
-    left_is_edge: bool,
-    right_is_edge: bool,
+    row_edges: RowEdges,
 ) -> Vec<Vec<(usize, i64)>> {
     // 遷移先の行ごとに有効な遷移を計算
     let mut transition_costs: Vec<Vec<(usize, i64)>> = vec![];
@@ -53,8 +50,8 @@ pub fn build_transition_costs(
         // 遷移元の行から有効な遷移のみのコストを保存する
         let mut valid_transitions = vec![];
         for (j, prev_row) in rows.iter().enumerate() {
-            if is_valid_transition(prev_row, next_row, problem, left_is_edge, right_is_edge) {
-                let value = cost.transition(prev_row, next_row, left_is_edge, right_is_edge);
+            if is_valid_transition(prev_row, next_row, problem, row_edges) {
+                let value = cost.transition(prev_row, next_row, row_edges);
                 valid_transitions.push((j, value));
             }
         }
@@ -66,14 +63,13 @@ pub fn build_transition_costs(
 pub fn build_transition_pairs(
     rows: &[Vec<Cell>],
     problem: Problem,
-    left_is_edge: bool,
-    right_is_edge: bool,
+    row_edges: RowEdges,
 ) -> Vec<Vec<usize>> {
     let mut ret = vec![];
     for prev_row in rows {
         let mut valid_next_rows = vec![];
         for (j, next_row) in rows.iter().enumerate() {
-            if is_valid_transition(prev_row, next_row, problem, left_is_edge, right_is_edge) {
+            if is_valid_transition(prev_row, next_row, problem, row_edges) {
                 valid_next_rows.push(j);
             }
         }

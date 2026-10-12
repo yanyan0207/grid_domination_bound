@@ -6,7 +6,7 @@ use crate::{
     cost::Cost,
     dfs::dfs,
     matrix::Vector,
-    rules::{Cell, Problem, list_valid_rows},
+    rules::{Cell, Edges, Problem, list_valid_rows},
     transfer::build_transition_costs,
 };
 
@@ -29,17 +29,22 @@ pub fn board(
     cost: Cost,
 ) -> (i64, i64) {
     let (min_cost, stone_num) = match method {
-        Method::Dp => dp(rows, cols, problem, cost, verbose),
+        Method::Dp => {
+            let result = dp(rows, cols, problem, cost, Edges::ALL, verbose);
+            (result.min_cost, result.stone_num)
+        }
         Method::Dfs => {
             if cost == Cost::Loss {
                 unimplemented!("DFS は loss に対応していない");
             }
-            // 有効な行のリストを取得(左端が端、右端が端)
-            let valid_rows = list_valid_rows(cols, true, true);
+            // 有効な行のリストを取得(四方とも端)
+            let edges = Edges::ALL;
+            let row_edges = edges.row();
+            let valid_rows = list_valid_rows(cols, row_edges);
             // 1 行目のコスト
             let first_row_costs: Vec<i64> = valid_rows
                 .iter()
-                .map(|row| cost.first_row(row, true, true, true))
+                .map(|row| cost.first_row(row, edges))
                 .collect();
 
             // コストは 1 行目のコストと、隣り合う行の遷移コストの合計
@@ -47,7 +52,7 @@ pub fn board(
                 let transition_costs: i64 = index_list
                     .windows(2)
                     .map(|pair| {
-                        cost.transition(&valid_rows[pair[0]], &valid_rows[pair[1]], true, true)
+                        cost.transition(&valid_rows[pair[0]], &valid_rows[pair[1]], row_edges)
                     })
                     .sum();
                 first_row_costs[index_list[0]] + transition_costs
@@ -62,8 +67,7 @@ pub fn board(
                     cost.transition(
                         &valid_rows[min_pattern[i - 1]],
                         &valid_rows[index],
-                        true,
-                        true,
+                        row_edges,
                     )
                 };
                 total += step;
@@ -85,17 +89,32 @@ fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 {
     }
 }
 
-/// 転送行列（DP）で最小コストを求める
-fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> (i64, i64) {
+/// dp の計算結果
+pub struct DpResult {
+    /// 最小コスト
+    pub min_cost: i64,
+    /// 石の数
+    pub stone_num: i64,
+    /// 各行まで進めたときの、状態ごとの最小コスト。dp_history[i] は i + 1 行目まで
+    pub dp_history: Vec<Vector>,
+}
+
+/// 転送行列（DP）で最小コストを求める。edges は盤の四方が端かどうか
+pub fn dp(
+    rows: usize,
+    cols: usize,
+    problem: Problem,
+    cost: Cost,
+    edges: Edges,
+    verbose: bool,
+) -> DpResult {
     println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
 
-    let left_is_edge = true;
-    let right_is_edge = true;
-    let top_is_edge = true;
+    let row_edges = edges.row();
 
     // 有効な行のリストを取得(左端が端、右端が端)
     let valid_rows_start = Instant::now();
-    let valid_rows = list_valid_rows(cols, left_is_edge, right_is_edge);
+    let valid_rows = list_valid_rows(cols, row_edges);
     let valid_cnt = valid_rows.len();
     println!("valid_count = {valid_cnt}");
     if verbose {
@@ -109,8 +128,7 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
     // コストは --cost で選んだもの
     // 作られる遷移コスト行列は、遷移先の行が行、遷移元の行が列となる
     let cost_matrix_start = Instant::now();
-    let cost_matrix =
-        build_transition_costs(&valid_rows, problem, cost, left_is_edge, right_is_edge);
+    let cost_matrix = build_transition_costs(&valid_rows, problem, cost, row_edges);
     let cost_matrix_seconds = cost_matrix_start.elapsed().as_secs_f64();
     let transition_cnt = cost_matrix.iter().map(|row| row.len()).sum::<usize>();
     println!(
@@ -126,7 +144,7 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
     // 1行目の遷移コストを計算
     let dp = valid_rows
         .iter()
-        .map(|row| cost.first_row(row, left_is_edge, right_is_edge, top_is_edge))
+        .map(|row| cost.first_row(row, edges))
         .collect::<Vector>();
     let mut dp_history = vec![dp.clone()];
 
@@ -169,7 +187,7 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
     // 最後のパスとして使えないパスをINFにする
     let dp = dp_history.last_mut().unwrap();
     for (i, valid_row) in valid_rows.iter().enumerate() {
-        dp[i] += cost.last_row_addition(left_is_edge, right_is_edge, valid_row);
+        dp[i] += cost.last_row_addition(row_edges, valid_row);
     }
 
     // 最小コストとその経路を出力
@@ -198,7 +216,11 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
         previous_total = total;
     }
 
-    (min_cost, stone_number(cost, min_cost, rows, cols))
+    DpResult {
+        min_cost,
+        stone_num: stone_number(cost, min_cost, rows, cols),
+        dp_history,
+    }
 }
 
 /// 行を 1 行表示する。verbose のときは step_cost =（その行で増えたコスト, 累計）も表示する
