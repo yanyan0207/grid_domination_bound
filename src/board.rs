@@ -19,7 +19,7 @@ pub enum Method {
     Dfs,
 }
 
-/// n × m の盤全体の最小コストの計算。最小コストを返す
+/// n × m の盤全体の最小コストの計算。(最小コスト, 石の数) を返す
 pub fn board(
     rows: usize,
     cols: usize,
@@ -27,13 +27,13 @@ pub fn board(
     verbose: bool,
     method: Method,
     cost: Cost,
-) -> i64 {
-    if cost == Cost::Loss {
-        todo!("loss は未実装");
-    }
-    match method {
+) -> (i64, i64) {
+    let (min_cost, stone_num) = match method {
         Method::Dp => dp(rows, cols, problem, cost, verbose),
         Method::Dfs => {
+            if cost == Cost::Loss {
+                unimplemented!("DFS は loss に対応していない");
+            }
             // 有効な行のリストを取得(左端が端、右端が端)
             let valid_rows = list_valid_rows(cols, true, true);
             // 1 行目のコスト
@@ -53,16 +53,40 @@ pub fn board(
                 first_row_costs[index_list[0]] + transition_costs
             });
             println!("最小コスト: {min_cost}");
-            for &index in &min_pattern {
-                print_row(&valid_rows[index], verbose);
+            // 経路の各行で増えたコストと、その行までの累計
+            let mut total = 0;
+            for (i, &index) in min_pattern.iter().enumerate() {
+                let step = if i == 0 {
+                    first_row_costs[index]
+                } else {
+                    cost.transition(
+                        &valid_rows[min_pattern[i - 1]],
+                        &valid_rows[index],
+                        true,
+                        true,
+                    )
+                };
+                total += step;
+                print_row(&valid_rows[index], verbose, Some((step, total)));
             }
-            min_cost
+            (min_cost, stone_number(cost, min_cost, rows, cols))
         }
+    };
+    println!("石の数: {stone_num}");
+    (min_cost, stone_num)
+}
+
+/// 最小コストから石の数を求める。loss のときは |D| = (2nm + ℓ) / 6
+fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 {
+    if cost == Cost::Loss {
+        ((2 * rows * cols) as i64 + min_cost) / 6
+    } else {
+        min_cost
     }
 }
 
 /// 転送行列（DP）で最小コストを求める
-fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> i64 {
+fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> (i64, i64) {
     println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
 
     let left_is_edge = true;
@@ -73,10 +97,13 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
     let valid_rows_start = Instant::now();
     let valid_rows = list_valid_rows(cols, left_is_edge, right_is_edge);
     let valid_cnt = valid_rows.len();
-    println!(
-        "valid_count = {valid_cnt} ({:.3}s)",
-        valid_rows_start.elapsed().as_secs_f64()
-    );
+    println!("valid_count = {valid_cnt}");
+    if verbose {
+        println!(
+            "valid_rows time = {:.3}s",
+            valid_rows_start.elapsed().as_secs_f64()
+        );
+    }
 
     // 遷移コストを取得
     // コストは --cost で選んだもの
@@ -87,11 +114,13 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
     let cost_matrix_seconds = cost_matrix_start.elapsed().as_secs_f64();
     let transition_cnt = cost_matrix.iter().map(|row| row.len()).sum::<usize>();
     println!(
-        "cost_matrix count = {}, valid rate = {:0.2}% ({:.3}s)",
+        "cost_matrix count = {}, valid rate = {:0.2}%",
         transition_cnt,
-        transition_cnt as f64 / (valid_cnt * valid_cnt) as f64 * 100.0,
-        cost_matrix_seconds
+        transition_cnt as f64 / (valid_cnt * valid_cnt) as f64 * 100.0
     );
+    if verbose {
+        println!("cost_matrix time = {cost_matrix_seconds:.3}s");
+    }
 
     // 遷移コストの計算
     // 1行目の遷移コストを計算
@@ -125,13 +154,17 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
         dp_history.push(Vector(next_dp));
 
         // 進捗を標準エラー出力に、同じ行を上書きして表示する
-        eprint!(
-            "\r{row}/{} 行 ({:.1}s)",
-            rows - 1,
-            start.elapsed().as_secs_f64()
-        );
+        if verbose {
+            eprint!(
+                "\r{row}/{} 行 ({:.1}s)",
+                rows - 1,
+                start.elapsed().as_secs_f64()
+            );
+        }
     }
-    eprintln!();
+    if verbose {
+        eprintln!();
+    }
 
     // 最後のパスとして使えないパスをINFにする
     let dp = dp_history.last_mut().unwrap();
@@ -153,13 +186,23 @@ fn dp(rows: usize, cols: usize, problem: Problem, cost: Cost, verbose: bool) -> 
         min_pattern.push(work);
     }
     min_pattern.reverse();
-    for &index in &min_pattern {
-        print_row(&valid_rows[index], verbose);
+    // 経路の各行で増えたコストと、その行までの累計（最後の行は最後の行の追加分を含む）
+    let mut previous_total = 0;
+    for (i, &index) in min_pattern.iter().enumerate() {
+        let total = dp_history[i][index];
+        print_row(
+            &valid_rows[index],
+            verbose,
+            Some((total - previous_total, total)),
+        );
+        previous_total = total;
     }
-    min_cost
+
+    (min_cost, stone_number(cost, min_cost, rows, cols))
 }
 
-fn print_row(row: &[Cell], verbose: bool) {
+/// 行を 1 行表示する。verbose のときは step_cost =（その行で増えたコスト, 累計）も表示する
+fn print_row(row: &[Cell], verbose: bool, step_cost: Option<(i64, i64)>) {
     let line: String = row
         .iter()
         .map(|cell| match cell {
@@ -169,90 +212,84 @@ fn print_row(row: &[Cell], verbose: bool) {
             Cell::NeedOne => '.',
         })
         .collect();
-    println!("{line}");
+    match step_cost {
+        Some((step, total)) if verbose => println!("{line}  +{step} (累計 {total})"),
+        _ => println!("{line}"),
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn dom2_matches_talon_tool() {
-        // arXiv:1810.12896 の著者のツール（Source/release.exe）の出力。(行数 n, 列数 m, 最小の石の数)。幅 1 は扱わない
-        let expected = [
-            (2, 2, 2),
-            (2, 3, 3),
-            (2, 4, 4),
-            (2, 5, 5),
-            (2, 6, 6),
-            (3, 3, 4),
-            (3, 4, 6),
-            (3, 5, 7),
-            (3, 6, 8),
-            (4, 4, 8),
-            (4, 5, 10),
-            (4, 6, 12),
-        ];
-        for (n, m, value) in expected {
+    /// arXiv:1810.12896 の著者のツール（Source/release.exe）の出力。(行数 n, 列数 m, 最小の石の数)。幅 1 は扱わない
+    const DOM2_EXPECTED: [(usize, usize, i64); 12] = [
+        (2, 2, 2),
+        (2, 3, 3),
+        (2, 4, 4),
+        (2, 5, 5),
+        (2, 6, 6),
+        (3, 3, 4),
+        (3, 4, 6),
+        (3, 5, 7),
+        (3, 6, 8),
+        (4, 4, 8),
+        (4, 5, 10),
+        (4, 6, 12),
+    ];
+
+    /// OEIS A344719（n × n の 2-fair の最小の石の数）の a(2)〜a(6)。幅 1 は扱わない
+    const FAIR2_EXPECTED: [(usize, i64); 5] = [(2, 2), (3, 5), (4, 8), (5, 11), (6, 17)];
+
+    /// 2-domination の石の数が、著者のツールの値と一致するか
+    fn check_dom2(method: Method, cost: Cost) {
+        for (n, m, stones) in DOM2_EXPECTED {
             assert_eq!(
-                board(n, m, Problem::Dom2, true, Method::Dp, Cost::Stones),
-                value,
+                board(n, m, Problem::Dom2, false, method, cost).1,
+                stones,
                 "n = {n}, m = {m}"
             );
         }
     }
 
-    #[test]
-    fn fair2_matches_oeis_a344719() {
-        // OEIS A344719（n × n の 2-fair の最小の石の数）の a(2)〜a(6)。幅 1 は扱わない
-        let expected = [2, 5, 8, 11, 17];
-        for (i, value) in expected.into_iter().enumerate() {
-            let n = i + 2;
+    /// 2-fair の石の数が、OEIS の値と一致するか
+    fn check_fair2(method: Method, cost: Cost) {
+        for (n, stones) in FAIR2_EXPECTED {
             assert_eq!(
-                board(n, n, Problem::Fair2, false, Method::Dp, Cost::Stones),
-                value,
+                board(n, n, Problem::Fair2, false, method, cost).1,
+                stones,
                 "n = {n}"
             );
         }
     }
 
     #[test]
-    fn dfs_dom2_matches_talon_tool() {
-        // arXiv:1810.12896 の著者のツール（Source/release.exe）の出力。(行数 n, 列数 m, 最小の石の数)。幅 1 は扱わない
-        let expected = [
-            (2, 2, 2),
-            (2, 3, 3),
-            (2, 4, 4),
-            (2, 5, 5),
-            (2, 6, 6),
-            (3, 3, 4),
-            (3, 4, 6),
-            (3, 5, 7),
-            (3, 6, 8),
-            (4, 4, 8),
-            (4, 5, 10),
-            (4, 6, 12),
-        ];
-        for (n, m, value) in expected {
-            assert_eq!(
-                board(n, m, Problem::Dom2, false, Method::Dfs, Cost::Stones),
-                value,
-                "n = {n}, m = {m}"
-            );
-        }
+    fn dp_stones_dom2() {
+        check_dom2(Method::Dp, Cost::Stones);
     }
 
     #[test]
-    fn dfs_fair2_matches_oeis_a344719() {
-        // OEIS A344719（n × n の 2-fair の最小の石の数）の a(2)〜a(6)。幅 1 は扱わない
-        let expected = [2, 5, 8, 11, 17];
-        for (i, value) in expected.into_iter().enumerate() {
-            let n = i + 2;
-            assert_eq!(
-                board(n, n, Problem::Fair2, false, Method::Dfs, Cost::Stones),
-                value,
-                "n = {n}"
-            );
-        }
+    fn dp_stones_fair2() {
+        check_fair2(Method::Dp, Cost::Stones);
+    }
+
+    #[test]
+    fn dfs_stones_dom2() {
+        check_dom2(Method::Dfs, Cost::Stones);
+    }
+
+    #[test]
+    fn dfs_stones_fair2() {
+        check_fair2(Method::Dfs, Cost::Stones);
+    }
+
+    #[test]
+    fn dp_loss_dom2() {
+        check_dom2(Method::Dp, Cost::Loss);
+    }
+
+    #[test]
+    fn dp_loss_fair2() {
+        check_fair2(Method::Dp, Cost::Loss);
     }
 }
