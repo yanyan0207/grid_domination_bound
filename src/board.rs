@@ -1,9 +1,10 @@
 //! 盤全体（n × m）の最小コストの計算
 
 use crate::{
+    cost::Cost,
     dfs::dfs,
     matrix::Vector,
-    rules::{Cell, Problem, is_valid_row, list_valid_rows},
+    rules::{Cell, Problem, list_valid_rows},
     transfer::{INF, build_transition_cost_matrix},
 };
 
@@ -17,21 +18,37 @@ pub enum Method {
 }
 
 /// n × m の盤全体の最小コストの計算。最小コストを返す
-pub fn board(rows: usize, cols: usize, problem: Problem, verbose: bool, method: Method) -> i64 {
+pub fn board(
+    rows: usize,
+    cols: usize,
+    problem: Problem,
+    verbose: bool,
+    method: Method,
+    cost: Cost,
+) -> i64 {
+    if cost == Cost::Loss {
+        todo!("loss は未実装");
+    }
     match method {
-        Method::Dp => dp(rows, cols, problem, verbose),
+        Method::Dp => dp(rows, cols, problem, verbose, cost),
         Method::Dfs => {
             // 有効な行のリストを取得(左端が端、右端が端)
             let valid_rows = list_valid_rows(cols, true, true);
-            // 有効な行のコストを取得
-            let row_costs: Vec<i64> = valid_rows
+            // 1 行目のコスト
+            let first_row_costs: Vec<i64> = valid_rows
                 .iter()
-                .map(|row| row.iter().filter(|&&cell| cell == Cell::Stone).count() as i64)
+                .map(|row| cost.first_row(row, true, true, true))
                 .collect();
 
-            // コストは盤面全体の石の数
+            // コストは 1 行目のコストと、隣り合う行の遷移コストの合計
             let (min_cost, min_pattern) = dfs(&valid_rows, rows, problem, |index_list| {
-                index_list.iter().map(|&index| row_costs[index]).sum()
+                let transition_costs: i64 = index_list
+                    .windows(2)
+                    .map(|pair| {
+                        cost.transition(&valid_rows[pair[0]], &valid_rows[pair[1]], true, true)
+                    })
+                    .sum();
+                first_row_costs[index_list[0]] + transition_costs
             });
             println!("最小コスト: {min_cost}");
             for &index in &min_pattern {
@@ -43,23 +60,28 @@ pub fn board(rows: usize, cols: usize, problem: Problem, verbose: bool, method: 
 }
 
 /// 転送行列（DP）で最小コストを求める
-fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool) -> i64 {
+fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool, cost: Cost) -> i64 {
     println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
 
+    let left_is_edge = true;
+    let right_is_edge = true;
+    let top_is_edge = true;
+
     // 有効な行のリストを取得(左端が端、右端が端)
-    let valid_rows = list_valid_rows(cols, true, true);
+    let valid_rows = list_valid_rows(cols, left_is_edge, right_is_edge);
     let valid_cnt = valid_rows.len();
-    // 有効な行のコストを取得
-    let row_costs: Vec<i64> = valid_rows
-        .iter()
-        .map(|row| row.iter().filter(|&&cell| cell == Cell::Stone).count() as i64)
-        .collect();
     println!("valid_count = {valid_cnt}");
 
     // 遷移コストを取得
-    // コストは遷移先の石の数
+    // コストは --cost で選んだもの
     // 作られる遷移コスト行列は、遷移先の行が行、遷移元の行が列となる
-    let cost_matrix = build_transition_cost_matrix(&valid_rows, problem, true, true, &row_costs);
+    let cost_matrix = build_transition_cost_matrix(
+        &valid_rows,
+        problem,
+        left_is_edge,
+        right_is_edge,
+        |prev, next| cost.transition(prev, next, left_is_edge, right_is_edge),
+    );
     let transition_cnt = cost_matrix
         .iter()
         .map(|row| row.iter().filter(|&x| x != &INF).count())
@@ -74,15 +96,9 @@ fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool) -> i64 {
     // 1行目の遷移コストを計算
     let mut dp = valid_rows
         .iter()
-        .zip(row_costs)
-        .map(|(row, cost)| {
-            if is_valid_row(row, true, true, true) {
-                cost
-            } else {
-                INF
-            }
-        })
+        .map(|row| cost.first_row(row, left_is_edge, right_is_edge, top_is_edge))
         .collect::<Vector>();
+
     // 遷移の経路を保存
     let mut transition_path: Vec<Vec<usize>> = vec![];
 
@@ -103,11 +119,11 @@ fn dp(rows: usize, cols: usize, problem: Problem, verbose: bool) -> i64 {
     }
 
     // 最後のパスとして使えないパスをINFにする
-    for index in 0..valid_cnt {
-        if valid_rows[index].contains(&Cell::NeedOne) {
-            dp[index] = INF;
-        }
-    }
+    dp = valid_rows
+        .iter()
+        .zip(dp.iter())
+        .map(|(row, dp_value)| dp_value + cost.last_row_addition(left_is_edge, right_is_edge, row))
+        .collect::<Vector>();
 
     // 最小コストとその経路を出力
     let last_min_index = dp.min_index();
@@ -165,7 +181,7 @@ mod tests {
         ];
         for (n, m, value) in expected {
             assert_eq!(
-                board(n, m, Problem::Dom2, true, Method::Dp),
+                board(n, m, Problem::Dom2, true, Method::Dp, Cost::Stones),
                 value,
                 "n = {n}, m = {m}"
             );
@@ -179,7 +195,7 @@ mod tests {
         for (i, value) in expected.into_iter().enumerate() {
             let n = i + 2;
             assert_eq!(
-                board(n, n, Problem::Fair2, false, Method::Dp),
+                board(n, n, Problem::Fair2, false, Method::Dp, Cost::Stones),
                 value,
                 "n = {n}"
             );
@@ -205,7 +221,7 @@ mod tests {
         ];
         for (n, m, value) in expected {
             assert_eq!(
-                board(n, m, Problem::Dom2, false, Method::Dfs),
+                board(n, m, Problem::Dom2, false, Method::Dfs, Cost::Stones),
                 value,
                 "n = {n}, m = {m}"
             );
@@ -219,7 +235,7 @@ mod tests {
         for (i, value) in expected.into_iter().enumerate() {
             let n = i + 2;
             assert_eq!(
-                board(n, n, Problem::Fair2, false, Method::Dfs),
+                board(n, n, Problem::Fair2, false, Method::Dfs, Cost::Stones),
                 value,
                 "n = {n}"
             );

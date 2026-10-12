@@ -1,6 +1,7 @@
 //! コマンドラインの入口。引数を解析して、各サブコマンドの処理に振り分ける
 
 mod board;
+mod cost;
 mod dfs;
 mod matrix;
 mod rules;
@@ -35,6 +36,9 @@ enum Command {
         /// 計算の方式
         #[arg(long, value_enum, default_value_t = MethodArg::Dp)]
         method: MethodArg,
+        /// コストの種類
+        #[arg(long, value_enum, default_value_t = CostArg::Stones)]
+        cost: CostArg,
     },
 }
 
@@ -52,6 +56,24 @@ impl From<MethodArg> for board::Method {
         match arg {
             MethodArg::Dp => board::Method::Dp,
             MethodArg::Dfs => board::Method::Dfs,
+        }
+    }
+}
+
+/// --cost の選択肢。cost.rs を clap に依存させないため、ここで対応づける
+#[derive(Clone, Copy, ValueEnum)]
+enum CostArg {
+    /// 石の数
+    Stones,
+    /// loss
+    Loss,
+}
+
+impl From<CostArg> for cost::Cost {
+    fn from(arg: CostArg) -> Self {
+        match arg {
+            CostArg::Stones => cost::Cost::Stones,
+            CostArg::Loss => cost::Cost::Loss,
         }
     }
 }
@@ -82,8 +104,9 @@ fn main() {
             problem,
             verbose,
             method,
+            cost,
         } => {
-            board::board(n, m, problem.into(), verbose, method.into());
+            board::board(n, m, problem.into(), verbose, method.into(), cost.into());
         }
     }
 }

@@ -29,7 +29,7 @@ pub enum Cell {
 }
 
 /// 指定された幅のすべての可能な行のリストから、問題に従って有効な行だけを返す
-pub fn list_valid_rows(width: usize, top_is_edge: bool, bottom_is_edge: bool) -> Vec<Vec<Cell>> {
+pub fn list_valid_rows(width: usize, left_is_edge: bool, right_is_edge: bool) -> Vec<Vec<Cell>> {
     let mut valid_rows: Vec<Vec<Cell>> = Vec::new();
     for i in 0..(3u64.pow(width as u32)) {
         let mut row = Vec::with_capacity(width);
@@ -43,7 +43,7 @@ pub fn list_valid_rows(width: usize, top_is_edge: bool, bottom_is_edge: bool) ->
             });
             n /= 3;
         }
-        if is_valid_row(&row, top_is_edge, bottom_is_edge, false) {
+        if is_valid_row(&row, left_is_edge, right_is_edge, false) {
             valid_rows.push(row);
         }
     }
@@ -55,8 +55,8 @@ pub fn is_valid_transition(
     prev_row: &[Cell],
     next_row: &[Cell],
     problem: Problem,
-    top_is_edge: bool,
-    bottom_is_edge: bool,
+    left_is_edge: bool,
+    right_is_edge: bool,
 ) -> bool {
     // 前行を確認する
     for i in 0..prev_row.len() {
@@ -91,7 +91,7 @@ pub fn is_valid_transition(
         // NeedOne のセルの周りに石が一つもない場合は無効
         if next_row[i] == Cell::NeedOne
             && cnt == 0
-            && !((i == 0 && !top_is_edge) || (i == next_row.len() - 1 && !bottom_is_edge))
+            && !((i == 0 && !left_is_edge) || (i == next_row.len() - 1 && !right_is_edge))
         {
             return false;
         }
@@ -99,7 +99,7 @@ pub fn is_valid_transition(
         if next_row[i] == Cell::Ok
             && (cnt == 0
                 || (cnt == 1
-                    && !((i == 0 && !top_is_edge) || (i == next_row.len() - 1 && !bottom_is_edge))))
+                    && !((i == 0 && !left_is_edge) || (i == next_row.len() - 1 && !right_is_edge))))
         {
             return false;
         }
@@ -114,9 +114,9 @@ pub fn is_valid_transition(
 /// 指定された行が問題に従って有効かどうかを判定
 pub fn is_valid_row(
     row: &[Cell],
+    left_is_edge: bool,
+    right_is_edge: bool,
     top_is_edge: bool,
-    bottom_is_edge: bool,
-    is_first_row: bool,
 ) -> bool {
     for (i, cell) in row.iter().enumerate() {
         // 石なら常に有効
@@ -133,13 +133,13 @@ pub fn is_valid_row(
         }
         // 周りの空いてるセルの数をカウント
         let mut empty_cnt = 0;
-        if !is_first_row {
+        if !top_is_edge {
             empty_cnt += 1;
         }
-        if i == 0 && !top_is_edge {
+        if i == 0 && !left_is_edge {
             empty_cnt += 1;
         }
-        if i == row.len() - 1 && !bottom_is_edge {
+        if i == row.len() - 1 && !right_is_edge {
             empty_cnt += 1;
         }
 
