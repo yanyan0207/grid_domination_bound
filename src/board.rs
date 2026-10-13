@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use crate::{
-    cost::Cost,
+    cost::{Cost, stone_number},
     dfs::dfs,
     matrix::Vector,
     rules::{Cell, Edges, Problem, list_valid_rows},
@@ -80,15 +80,6 @@ pub fn board(
     (min_cost, stone_num)
 }
 
-/// 最小コストから石の数を求める。loss のときは |D| = (2nm + ℓ) / 6
-fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 {
-    if cost == Cost::Loss {
-        ((2 * rows * cols) as i64 + min_cost) / 6
-    } else {
-        min_cost
-    }
-}
-
 /// dp の計算結果
 pub struct DpResult {
     /// 最小コスト
@@ -97,6 +88,8 @@ pub struct DpResult {
     pub stone_num: i64,
     /// 各行まで進めたときの、状態ごとの最小コスト。dp_history[i] は i + 1 行目まで
     pub dp_history: Vec<Vector>,
+    /// 最小コストに至る経路
+    pub min_pattern: Vec<usize>,
 }
 
 /// 転送行列（DP）で最小コストを求める。edges は盤の四方が端かどうか
@@ -186,8 +179,10 @@ pub fn dp(
 
     // 最後のパスとして使えないパスをINFにする
     let dp = dp_history.last_mut().unwrap();
-    for (i, valid_row) in valid_rows.iter().enumerate() {
-        dp[i] += cost.last_row_addition(row_edges, valid_row);
+    if edges.bottom {
+        for (i, valid_row) in valid_rows.iter().enumerate() {
+            dp[i] += cost.last_row_addition(row_edges, valid_row);
+        }
     }
 
     // 最小コストとその経路を出力
@@ -220,6 +215,7 @@ pub fn dp(
         min_cost,
         stone_num: stone_number(cost, min_cost, rows, cols),
         dp_history,
+        min_pattern,
     }
 }
 

@@ -136,3 +136,12 @@ fn transition_loss(prev: &[Cell], next: &[Cell], row_edges: RowEdges) -> i64 {
 
     cost
 }
+
+/// 最小コストから石の数を求める。loss のときは |D| = (2nm + ℓ) / 6
+pub fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 {
+    if cost == Cost::Loss {
+        ((2 * rows * cols) as i64 + min_cost) / 6
+    } else {
+        min_cost
+    }
+}

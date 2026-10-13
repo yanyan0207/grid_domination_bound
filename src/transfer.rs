@@ -11,7 +11,7 @@ pub const INF: i64 = 1_000_000_000;
 /// 行 rows の間の遷移コスト行列を作る
 ///
 /// 遷移可能な場合は cost(遷移元, 遷移先)、遷移不可能な場合は無限大とする
-/// 計算の都合上、next_row -> prev_row の順で行列を作る
+/// 行列は prev_row -> next_row の順（m[遷移元][遷移先]）。論文の T[S][S'] と同じ向きで、compose でそのままつなげる
 #[allow(unused)]
 pub fn build_transition_cost_matrix(
     rows: &[Vec<Cell>],
@@ -20,9 +20,9 @@ pub fn build_transition_cost_matrix(
     row_edges: RowEdges,
 ) -> Matrix {
     rows.iter()
-        .map(|next_row| {
+        .map(|prev_row| {
             rows.iter()
-                .map(|prev_row| {
+                .map(|next_row| {
                     if is_valid_transition(prev_row, next_row, problem, row_edges) {
                         cost.transition(prev_row, next_row, row_edges)
                     } else {

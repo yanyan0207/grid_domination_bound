@@ -1,6 +1,7 @@
 //! コマンドラインの入口。引数を解析して、各サブコマンドの処理に振り分ける
 
 mod board;
+mod border;
 mod cost;
 mod dfs;
 mod matrix;
@@ -21,10 +22,10 @@ struct Cli {
 enum Command {
     /// 盤全体の最小コストの計算
     Board {
-        /// 盤の行数（列の状態の高さ）
+        /// 盤の行数（上から 1 行ずつ積む回数）
         #[arg(short = 'n', long = "lines", default_value_t = 6)]
         n: usize,
-        /// 盤の列数（遷移を進める回数）
+        /// 盤の列数（1 行の状態の幅）
         #[arg(short = 'm', long = "columns", default_value_t = 6)]
         m: usize,
         /// 問題の種類
@@ -39,6 +40,24 @@ enum Command {
         /// コストの種類
         #[arg(long, value_enum, default_value_t = CostArg::Stones)]
         cost: CostArg,
+    },
+    /// 縁（角と帯）の計算
+    Border {
+        /// 縁の長さ（上から 1 行ずつ積む回数）
+        #[arg(short = 'n', long = "lines", default_value_t = 6)]
+        n: usize,
+        /// 縁の幅（1 行の状態の幅）
+        #[arg(short = 'm', long = "columns", default_value_t = 6)]
+        m: usize,
+        /// 角の一辺の長さ
+        #[arg(short = 'c', long = "corner-size", default_value_t = 6)]
+        corner_size: usize,
+        /// 問題の種類
+        #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
+        problem: ProblemArg,
+        /// 詳しい表示
+        #[arg(short, long)]
+        verbose: bool,
     },
 }
 
@@ -107,6 +126,15 @@ fn main() {
             cost,
         } => {
             board::board(n, m, problem.into(), verbose, method.into(), cost.into());
+        }
+        Command::Border {
+            n,
+            m,
+            corner_size,
+            problem,
+            verbose,
+        } => {
+            border::border_cost_matrix(n, m, corner_size, problem.into(), cost::Cost::Loss, verbose)
         }
     }
 }
