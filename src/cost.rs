@@ -18,7 +18,7 @@ impl Cost {
     /// 1 行目に行 row を置いたときのコスト
     ///
     /// edges は盤の四方が端かどうか
-    pub fn first_row(self, row: &[Cell], edges: Edges) -> i64 {
+    pub fn first_row(self, row: &[Cell], edges: &Edges) -> i64 {
         if edges.top && !is_valid_row(row, edges) {
             return INF;
         }
@@ -58,13 +58,13 @@ fn stone_count(row: &[Cell]) -> i64 {
 }
 
 /// 1 行目に行 row を置いたときの loss
-fn first_row_loss(row: &[Cell], edges: Edges) -> i64 {
+fn first_row_loss(row: &[Cell], edges: &Edges) -> i64 {
     let Edges {
         top: top_is_edge,
         bottom: _bottom_is_edge,
         left: left_is_edge,
         right: right_is_edge,
-    } = edges;
+    } = *edges;
     let mut cost = 0;
 
     // 石がエッジにあれば+1

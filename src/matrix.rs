@@ -1,13 +1,16 @@
 //! 行列とベクトルの計算
 
-use std::ops::{Add, Deref, DerefMut};
+use std::{
+    fmt,
+    ops::{Add, Deref, DerefMut},
+};
 
 use crate::transfer::INF;
 
 /// 成分が i64 の行列。各行は Vector
-#[allow(unused)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Matrix(pub Vec<Vector>);
+pub type SparseMatrix = Vec<Vec<(usize, i64)>>;
 
 /// 成分が i64 のベクトル
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -94,6 +97,55 @@ impl FromIterator<Vector> for Matrix {
     }
 }
 
+/// 成分を表示用の文字列にする。INF 以上は「.」
+fn cell_text(value: i64) -> String {
+    if value >= INF {
+        ".".to_string()
+    } else {
+        value.to_string()
+    }
+}
+
+/// 1 行に並べて表示する。INF は「.」
+impl fmt::Display for Vector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let texts: Vec<String> = self.iter().map(|&value| cell_text(value)).collect();
+        write!(f, "{}", texts.join(" "))
+    }
+}
+
+/// 1 行ずつ、桁をそろえて表示する。INF は「.」
+///
+/// 1 行目に列の番号、各行の先頭に行の番号を付ける
+impl fmt::Display for Matrix {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let texts: Vec<Vec<String>> = self
+            .iter()
+            .map(|row| row.iter().map(|&value| cell_text(value)).collect())
+            .collect();
+        let cols = texts.first().map_or(0, |row| row.len());
+        // 成分の幅は、成分と列の番号のうち一番長いもの
+        let width = texts
+            .iter()
+            .flatten()
+            .map(|text| text.len())
+            .chain((0..cols).map(|j| j.to_string().len()))
+            .max()
+            .unwrap_or(1);
+        // 行の番号の幅
+        let label_width = texts.len().saturating_sub(1).to_string().len();
+
+        // 列の番号
+        let header: Vec<String> = (0..cols).map(|j| format!("{j:>width$}")).collect();
+        write!(f, "{:label_width$}  {}", "", header.join(" "))?;
+        for (i, row) in texts.iter().enumerate() {
+            let line: Vec<String> = row.iter().map(|text| format!("{text:>width$}")).collect();
+            write!(f, "\n{i:>label_width$}: {}", line.join(" "))?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,6 +192,16 @@ mod tests {
         let b = matrix(vec![vec![INF, INF], vec![10, INF]]);
         assert_eq!(compose(&a, &b), matrix(vec![vec![11, INF], vec![INF, INF]]));
         assert_eq!(compose(&b, &a), matrix(vec![vec![INF, INF], vec![INF, 11]]));
+    }
+
+    #[test]
+    fn display_aligns_and_hides_infinity() {
+        let m = matrix(vec![vec![0, 12, INF], vec![INF, 3, 100]]);
+        assert_eq!(
+            m.to_string(),
+            "     0   1   2\n0:   0  12   .\n1:   .   3 100"
+        );
+        assert_eq!(Vector(vec![1, INF, 23]).to_string(), "1 . 23");
     }
 
     #[test]

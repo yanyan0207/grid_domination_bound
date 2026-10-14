@@ -59,7 +59,7 @@ pub fn dfs(
         let mut valid = true;
         if stack.len() == 1 {
             // 最初の行の場合は行単体の有効性を確認
-            valid = is_valid_row(&valid_rows[stack[0]], Edges::ALL);
+            valid = is_valid_row(&valid_rows[stack[0]], &Edges::ALL);
         } else {
             // 最後の行の場合有効性を確認
             if stack.len() == rows {

@@ -87,7 +87,7 @@ pub fn list_valid_rows(width: usize, row_edges: RowEdges) -> Vec<Vec<Cell>> {
             left: row_edges.left,
             right: row_edges.right,
         };
-        if is_valid_row(&row, edges) {
+        if is_valid_row(&row, &edges) {
             valid_rows.push(row);
         }
     }
@@ -159,13 +159,13 @@ pub fn is_valid_transition(
 }
 
 /// 指定された行が問題に従って有効かどうかを判定
-pub fn is_valid_row(row: &[Cell], edges: Edges) -> bool {
+pub fn is_valid_row(row: &[Cell], edges: &Edges) -> bool {
     let Edges {
         top: top_is_edge,
         bottom: _bottom_is_edge,
         left: left_is_edge,
         right: right_is_edge,
-    } = edges;
+    } = *edges;
     for (i, cell) in row.iter().enumerate() {
         // 石なら常に有効
         if cell == &Cell::Stone {

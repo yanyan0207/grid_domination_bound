@@ -2,7 +2,7 @@
 
 use crate::{
     cost::Cost,
-    matrix::Matrix,
+    matrix::{Matrix, SparseMatrix},
     rules::{Cell, Problem, RowEdges, is_valid_transition},
 };
 
@@ -12,7 +12,6 @@ pub const INF: i64 = 1_000_000_000;
 ///
 /// 遷移可能な場合は cost(遷移元, 遷移先)、遷移不可能な場合は無限大とする
 /// 行列は prev_row -> next_row の順（m[遷移元][遷移先]）。論文の T[S][S'] と同じ向きで、compose でそのままつなげる
-#[allow(unused)]
 pub fn build_transition_cost_matrix(
     rows: &[Vec<Cell>],
     problem: Problem,
@@ -43,9 +42,9 @@ pub fn build_transition_costs(
     problem: Problem,
     cost: Cost,
     row_edges: RowEdges,
-) -> Vec<Vec<(usize, i64)>> {
+) -> SparseMatrix {
     // 遷移先の行ごとに有効な遷移を計算
-    let mut transition_costs: Vec<Vec<(usize, i64)>> = vec![];
+    let mut transition_costs: SparseMatrix = vec![];
     for next_row in rows {
         // 遷移元の行から有効な遷移のみのコストを保存する
         let mut valid_transitions = vec![];
