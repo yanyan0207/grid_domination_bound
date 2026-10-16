@@ -21,7 +21,7 @@ cargo build --release --quiet
 
 for n in $(seq "$from" "$to"); do
     start=$EPOCHREALTIME
-    output=$(./target/release/border-loss board -n "$n" -m "$n" --problem "$problem" --cost "$cost" "$@")
+    output=$(./target/release/border-loss board -n "$n" -m "$n" --problem "$problem" --cost "$cost" --verbose "$@")
     end=$EPOCHREALTIME
     min_cost=$(sed -n 's/^最小コスト: //p' <<<"$output")
     stones=$(sed -n 's/^石の数: //p' <<<"$output")

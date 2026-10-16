@@ -82,6 +82,37 @@ pub fn compose(a: &Matrix, b: &Matrix) -> Matrix {
         .collect()
 }
 
+/// compose と同じ積を計算し、どこを経由したかも返す
+///
+/// 戻り値の via[i][j] は、c[i][j] が最小になったときの経由先 k（i → k → j）。
+/// c[i][j] が INF（i から j へ行けない）なら None。最小が同じ k が複数あるときは、番号の小さい方
+pub fn compose_with_via(a: &Matrix, b: &Matrix) -> (Matrix, Vec<Vec<Option<usize>>>) {
+    let cols = b.first().map_or(0, |row| row.len());
+    let mut c = Vec::with_capacity(a.len());
+    let mut via = Vec::with_capacity(a.len());
+    for a_row in a.iter() {
+        let mut c_row = vec![INF; cols];
+        let mut via_row = vec![None; cols];
+        for (k, &a_ik) in a_row.iter().enumerate() {
+            // 来られない経由先は飛ばす
+            if a_ik >= INF {
+                continue;
+            }
+            for ((c_ij, via_ij), &b_kj) in c_row.iter_mut().zip(via_row.iter_mut()).zip(b[k].iter())
+            {
+                let value = a_ik + b_kj;
+                if value < *c_ij {
+                    *c_ij = value;
+                    *via_ij = Some(k);
+                }
+            }
+        }
+        c.push(Vector(c_row));
+        via.push(via_row);
+    }
+    (Matrix(c), via)
+}
+
 impl Deref for Matrix {
     type Target = [Vector];
 
@@ -94,6 +125,33 @@ impl Deref for Matrix {
 impl FromIterator<Vector> for Matrix {
     fn from_iter<I: IntoIterator<Item = Vector>>(iter: I) -> Matrix {
         Matrix(iter.into_iter().collect())
+    }
+}
+
+impl Matrix {
+    /// 転置する。t[j][i] = m[i][j]
+    ///
+    /// m[遷移元][遷移先] の行列なら、m[遷移先][遷移元] の向きになる
+    pub fn transpose(&self) -> Matrix {
+        let cols = self.first().map_or(0, |row| row.len());
+        (0..cols)
+            .map(|j| self.iter().map(|row| row[j]).collect())
+            .collect()
+    }
+
+    /// INF でない成分だけを持つ形にする。行 i は (列 j, m[i][j]) の一覧
+    ///
+    /// 行と列の向きはそのまま。m[遷移元][遷移先] なら、行ごとに遷移先の一覧になる
+    pub fn to_sparse(&self) -> SparseMatrix {
+        self.iter()
+            .map(|row| {
+                row.iter()
+                    .enumerate()
+                    .filter(|&(_, &value)| value < INF)
+                    .map(|(j, &value)| (j, value))
+                    .collect()
+            })
+            .collect()
     }
 }
 
@@ -186,6 +244,28 @@ mod tests {
     }
 
     #[test]
+    fn compose_with_via_records_intermediate() {
+        let t = matrix(vec![
+            vec![INF, 2, INF, INF],
+            vec![0, INF, INF, 1],
+            vec![INF, INF, INF, INF],
+            vec![INF, 3, INF, INF],
+        ]);
+        let (c, via) = compose_with_via(&t, &t);
+        assert_eq!(c, compose(&t, &t));
+        assert_eq!(
+            via,
+            vec![
+                vec![Some(1), None, None, Some(1)],
+                // 1→0→1（0+2）の方が 1→3→1（1+3）より小さいので、経由先は 0
+                vec![None, Some(0), None, None],
+                vec![None, None, None, None],
+                vec![Some(1), None, None, Some(1)],
+            ]
+        );
+    }
+
+    #[test]
     fn compose_order_matters() {
         // a のあとに b。0→1 が 1、1→0 が 10
         let a = matrix(vec![vec![INF, 1], vec![INF, INF]]);
@@ -202,6 +282,21 @@ mod tests {
             "     0   1   2\n0:   0  12   .\n1:   .   3 100"
         );
         assert_eq!(Vector(vec![1, INF, 23]).to_string(), "1 . 23");
+    }
+
+    #[test]
+    fn transpose_swaps_rows_and_columns() {
+        let m = matrix(vec![vec![1, 2, 3], vec![4, 5, INF]]);
+        let expected = matrix(vec![vec![1, 4], vec![2, 5], vec![3, INF]]);
+        assert_eq!(m.transpose(), expected);
+        assert_eq!(m.transpose().transpose(), m);
+    }
+
+    #[test]
+    fn to_sparse_keeps_finite_entries() {
+        let m = matrix(vec![vec![INF, 2, 0], vec![INF, INF, INF]]);
+        let expected: SparseMatrix = vec![vec![(1, 2), (2, 0)], vec![]];
+        assert_eq!(m.to_sparse(), expected);
     }
 
     #[test]

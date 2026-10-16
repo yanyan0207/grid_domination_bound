@@ -116,6 +116,8 @@ pub struct DpResult {
     /// 最小コストに至る経路
     #[allow(unused)]
     pub min_pattern: Vec<usize>,
+    /// 遷移パス
+    pub transition_path: Vec<Vec<usize>>,
 }
 
 pub fn dp(
@@ -295,6 +297,7 @@ pub fn calc_dp(
         stone_num: stone_number(*cost, min_cost, *rows, *cols),
         dp_history,
         min_pattern,
+        transition_path,
     }
 }
 
