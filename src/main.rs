@@ -6,6 +6,7 @@ mod corner;
 mod cost;
 mod dfs;
 mod display;
+mod dp;
 mod matrix;
 mod rules;
 mod transfer;

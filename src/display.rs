@@ -27,6 +27,26 @@ pub fn print_row<T: Copy + Into<Option<Cell>>>(row: &[T]) {
     println!();
 }
 
+/// 行を 1 行表示する。verbose のときは step_cost =（その行で増えたコスト, 累計）も表示する
+pub fn print_row_with_cost(row: &[Cell], verbose: bool, step_cost: Option<(i64, i64)>) {
+    if !verbose {
+        return;
+    }
+    let line: String = row
+        .iter()
+        .map(|cell| match cell {
+            Cell::Stone => '#',
+            Cell::Ok => '.',
+            Cell::NeedOne if verbose => '?',
+            Cell::NeedOne => '.',
+        })
+        .collect();
+    match step_cost {
+        Some((step, total)) if verbose => println!("{line}  +{step} (累計 {total})"),
+        _ => println!("{line}"),
+    }
+}
+
 /// 行を積む方向（次の行が来る向き）。Ok と NeedOne はこの向きの隣に対する状態
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(dead_code)]

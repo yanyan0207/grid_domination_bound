@@ -1,7 +1,7 @@
 //! 角（盤の隅の、一辺 corner_size の正方形）の計算
 
-use crate::board::{calc_dp, init_dp};
 use crate::display::{BoardView, Dir};
+use crate::dp::{calc_dp, init_dp, print_dp_result};
 use crate::matrix::Matrix;
 use crate::rules::{Cell, Edges};
 use crate::{cost::Cost, rules::Problem, transfer::INF};
@@ -48,13 +48,13 @@ pub fn corner(corner_size: usize, problem: Problem, cost: Cost, verbose: bool) {
     println!("min_out_row_index = {}", min_out_row_index);
 
     let min_transition_path = &transition_path_list[min_in_col_index];
-    let work = min_out_row_index;
+    let mut work = min_out_row_index;
     let mut path_list = vec![work];
     if verbose {
         println!("min_transition_path = {:?}", min_transition_path);
     }
     for min_transition in min_transition_path.iter().rev() {
-        let work = min_transition[work];
+        work = min_transition[work];
         path_list.push(work);
     }
     path_list.reverse();
@@ -103,6 +103,9 @@ pub fn corner_transition_matrix(
             }),
             verbose,
         );
+        if verbose {
+            print_dp_result(&dp_config, &result);
+        }
         matrix.push(result.dp_history.last().unwrap().clone());
         transition_path_list.push(result.transition_path);
     }
