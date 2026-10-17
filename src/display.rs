@@ -83,7 +83,6 @@ impl BoardView {
     }
 
     /// (row, col) のセルを、dir の向きに積んだ cell にする
-    #[allow(dead_code)]
     pub fn set(&mut self, row: usize, col: usize, cell: Cell, dir: Dir) {
         self.cells[row][col] = Some((cell, dir));
     }
