@@ -2,8 +2,10 @@
 
 mod board;
 mod border;
+mod corner;
 mod cost;
 mod dfs;
+mod display;
 mod matrix;
 mod rules;
 mod transfer;
@@ -49,6 +51,18 @@ enum Command {
         /// 縁の幅（1 行の状態の幅）
         #[arg(short = 'm', long = "columns", default_value_t = 6)]
         m: usize,
+        /// 角の一辺の長さ
+        #[arg(short = 'c', long = "corner-size", default_value_t = 6)]
+        corner_size: usize,
+        /// 問題の種類
+        #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
+        problem: ProblemArg,
+        /// 詳しい表示
+        #[arg(short, long)]
+        verbose: bool,
+    },
+    /// 角の計算
+    Corner {
         /// 角の一辺の長さ
         #[arg(short = 'c', long = "corner-size", default_value_t = 6)]
         corner_size: usize,
@@ -135,6 +149,13 @@ fn main() {
             verbose,
         } => {
             border::border_cost_matrix(n, m, corner_size, problem.into(), cost::Cost::Loss, verbose)
+        }
+        Command::Corner {
+            corner_size,
+            problem,
+            verbose,
+        } => {
+            corner::corner(corner_size, problem.into(), cost::Cost::Loss, verbose);
         }
     }
 }

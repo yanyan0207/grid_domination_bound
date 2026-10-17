@@ -4,7 +4,9 @@
 
 use crate::{
     board::{calc_dp, init_dp},
+    corner::{CornerMatrixResult, corner_transition_matrix},
     cost::{Cost, stone_number},
+    display::{print_cell, print_row},
     matrix::{Matrix, compose, compose_with_via},
     rules::{Cell, Edges, Problem, RowEdges, list_valid_rows},
     transfer::{INF, build_transition_cost_matrix},
@@ -42,8 +44,11 @@ pub fn border_cost_matrix(
         },
     );
     // 角の遷移コスト行列を構築
-    let (corner_matrix, corner_transition_path_list) =
-        corner_transition_costs(corner_size, problem, cost, verbose);
+    let CornerMatrixResult {
+        valid_rows,
+        cost_matrix: corner_matrix,
+        transition_path_list,
+    } = corner_transition_matrix(corner_size, problem, cost, verbose);
 
     // 初期状態は左上の角の遷移コスト行列
     let mut border_matrix = corner_matrix.clone();
@@ -161,132 +166,4 @@ pub fn border_cost_matrix(
         }
         println!();
     }
-}
-
-fn print_cell(cell: Option<Cell>) {
-    match cell {
-        None => print!("-"),
-        Some(Cell::Stone) => print!("#"),
-        Some(Cell::Ok) => print!("o"),
-        Some(Cell::NeedOne) => print!("?"),
-    }
-}
-
-fn print_row(row: &[Cell]) {
-    for &cell in row {
-        print_cell(Some(cell));
-    }
-    println!();
-}
-
-/// 幅 corner_size の角の最小コストの計算（未実装）
-pub fn corner_transition_costs(
-    corner_size: usize,
-    problem: Problem,
-    cost: Cost,
-    verbose: bool,
-) -> (Matrix, Vec<Vec<Vec<usize>>>) {
-    println!(
-        "corner: corner_size = {corner_size}, problem = {problem}, cost = {cost:?}, verbose = {verbose}"
-    );
-
-    // 角の遷移コストの計算に左上隅を使用する
-    let edges = Edges {
-        top: true,
-        bottom: false,
-        left: true,
-        right: false,
-    };
-
-    // 有効な行を取得
-    let valid_rows = list_valid_rows(corner_size, edges.row());
-
-    // 角の入力列(左上隅の角の右列の右隣の列)ごとにDPを計算
-    let mut matrix = vec![];
-    let dp_config = init_dp(corner_size, corner_size, problem, cost, edges, verbose);
-    let mut transition_path_list = vec![];
-    for in_column in valid_rows {
-        let result = calc_dp(
-            &dp_config,
-            Some(&|row_index, prev_row, next_row| {
-                add_cost_row_for_in_column(row_index, prev_row, next_row, &in_column, problem)
-            }),
-            verbose,
-        );
-        if verbose {
-            println!("in_column = {:?}, result = {:?}", in_column, result);
-        }
-        matrix.push(result.dp_history.last().unwrap().clone());
-        transition_path_list.push(result.transition_path);
-    }
-    (Matrix(matrix), transition_path_list)
-}
-
-fn add_cost_row_for_in_column(
-    row_index: usize,
-    prev_row: Option<&[Cell]>,
-    next_row: &[Cell],
-    in_column: &[Cell],
-    problem: Problem,
-) -> i64 {
-    let in_column_cell = in_column[row_index];
-    let next_row_cell = *next_row.last().unwrap();
-
-    let mut stones_around_next_row_cell = 0;
-    let mut cost = 0;
-    if next_row_cell != Cell::Stone {
-        // next_row_cellが石でない場合は周りの石の数をカウント
-        if let Some(prev_row) = prev_row
-            && *prev_row.last().unwrap() == Cell::Stone
-        {
-            stones_around_next_row_cell += 1;
-        }
-        if in_column_cell == Cell::Stone {
-            stones_around_next_row_cell += 1;
-        }
-        if next_row[next_row.len() - 2] == Cell::Stone {
-            stones_around_next_row_cell += 1;
-        }
-    }
-
-    if in_column_cell == Cell::Stone {
-        if next_row_cell == Cell::Stone {
-            return 2;
-        }
-    }
-
-    // InColumn側のコスト
-    if in_column_cell == Cell::Ok {
-        if next_row_cell == Cell::Stone {
-            if problem == Problem::Fair2 {
-                return INF;
-            } else {
-                cost += 1;
-            }
-        }
-    }
-    if in_column_cell == Cell::NeedOne {
-        if next_row_cell != Cell::Stone {
-            return INF;
-        }
-    }
-
-    // NextRow側のコスト
-    if next_row_cell == Cell::Ok {
-        if stones_around_next_row_cell < 2 {
-            return INF;
-        } else if stones_around_next_row_cell == 3 {
-            if problem == Problem::Fair2 {
-                return INF;
-            } else {
-                cost += 1;
-            }
-        }
-    }
-    if next_row_cell == Cell::NeedOne {
-        if stones_around_next_row_cell != 1 {
-            return INF;
-        }
-    }
-    cost
 }

@@ -1,6 +1,6 @@
 //! 盤全体（n × m）の最小コストの計算
 
-use std::time::Instant;
+use std::{fmt, time::Instant};
 
 use crate::{
     cost::{Cost, stone_number},
@@ -89,20 +89,47 @@ pub fn board(
 
 pub struct DpConfig {
     /// 行数
-    rows: usize,
+    pub rows: usize,
     /// 列数
-    cols: usize,
+    pub cols: usize,
     /// 問題の種類
-    problem: Problem,
+    pub problem: Problem,
     /// コストの種類
-    cost: Cost,
+    pub cost: Cost,
     /// 盤の四方が端かどうか
-    edges: Edges,
+    pub edges: Edges,
     /// 有効な行のリスト
-    valid_rows: Vec<Vec<Cell>>,
+    pub valid_rows: Vec<Vec<Cell>>,
     /// 遷移コスト行列
-    cost_matrix: SparseMatrix,
+    pub cost_matrix: SparseMatrix,
 }
+
+// 表示用：{}
+impl fmt::Display for DpConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "DpConfig {{")?;
+        writeln!(f, "\trows: {}", self.rows)?;
+        writeln!(f, "\tcols: {}", self.cols)?;
+        writeln!(f, "\tproblem: {:?}", self.problem)?;
+        writeln!(f, "\tcost: {:?}", self.cost)?;
+        writeln!(f, "\tedges: {:?}", self.edges)?;
+        writeln!(
+            f,
+            "\tvalid_rows count: {} x {}",
+            self.valid_rows[0].len(),
+            self.valid_rows.len()
+        )?;
+        writeln!(
+            f,
+            "\tcost_matrix count: {} x {}",
+            self.cost_matrix.len(),
+            self.cost_matrix[0].len()
+        )?;
+        writeln!(f, "}}")?;
+        Ok(())
+    }
+}
+
 /// dp の計算結果
 #[derive(Debug)]
 pub struct DpResult {
@@ -141,7 +168,10 @@ pub fn init_dp(
     edges: Edges,
     verbose: bool,
 ) -> DpConfig {
-    println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
+    if verbose {
+        println!("init_dp start");
+        println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
+    }
 
     let row_edges = edges.row();
 
@@ -149,8 +179,8 @@ pub fn init_dp(
     let valid_rows_start = Instant::now();
     let valid_rows = list_valid_rows(cols, row_edges);
     let valid_cnt = valid_rows.len();
-    println!("valid_count = {valid_cnt}");
     if verbose {
+        println!("valid_count = {valid_cnt}");
         println!(
             "valid_rows time = {:.3}s",
             valid_rows_start.elapsed().as_secs_f64()
