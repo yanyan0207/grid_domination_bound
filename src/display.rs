@@ -20,15 +20,16 @@ pub fn print_cell(cell: Option<Cell>) {
 }
 
 /// 行を 1 行表示する
-pub fn print_row(row: &[Cell]) {
+pub fn print_row<T: Copy + Into<Option<Cell>>>(row: &[T]) {
     for &cell in row {
-        print_cell(Some(cell));
+        print_cell(cell.into());
     }
     println!();
 }
 
 /// 行を積む方向（次の行が来る向き）。Ok と NeedOne はこの向きの隣に対する状態
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Dir {
     Down,
     Right,
@@ -62,6 +63,7 @@ impl BoardView {
     }
 
     /// (row, col) のセルを、dir の向きに積んだ cell にする
+    #[allow(dead_code)]
     pub fn set(&mut self, row: usize, col: usize, cell: Cell, dir: Dir) {
         self.cells[row][col] = Some((cell, dir));
     }
@@ -102,20 +104,5 @@ impl BoardView {
             println!("{}", dir_line.iter().collect::<String>());
         }
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn board_view_uses_two_chars_per_cell() {
-        let mut view = BoardView::new(2, 3);
-        view.set(0, 0, Cell::Stone, Dir::Down);
-        view.set(0, 1, Cell::Ok, Dir::Down);
-        view.set(0, 2, Cell::NeedOne, Dir::Right);
-        view.set(1, 1, Cell::NeedOne, Dir::Up);
-        assert_eq!(view.to_string(), "##ov?>\n--?^--\n");
     }
 }

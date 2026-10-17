@@ -55,7 +55,7 @@ impl Edges {
 }
 
 /// セルの状態。前の行と同じ行の石を数えた時点で、次の行に何が必要かを表す
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Cell {
     /// 石
     Stone,
@@ -208,4 +208,198 @@ pub fn is_valid_row(row: &[Cell], edges: &Edges) -> bool {
         }
     }
     true
+}
+#[cfg(test)]
+mod tests {
+
+    use std::collections::HashSet;
+
+    use super::*;
+    const CELL_LIST: [Cell; 3] = [Cell::Ok, Cell::Stone, Cell::NeedOne];
+
+    #[test]
+    fn test_list_valid_rows_2() {
+        let rows = list_valid_rows(
+            2,
+            RowEdges {
+                left: true,
+                right: true,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok]));
+        assert_eq!(rows.len(), 6);
+    }
+
+    #[test]
+    fn test_list_valid_rows_2_left_not_edge() {
+        let rows = list_valid_rows(
+            2,
+            RowEdges {
+                left: false,
+                right: true,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok]));
+        assert_eq!(rows.len(), 7);
+    }
+
+    #[test]
+    fn test_list_valid_rows_2_right_not_edge() {
+        let rows = list_valid_rows(
+            2,
+            RowEdges {
+                left: true,
+                right: false,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne]));
+        assert_eq!(rows.len(), 7);
+    }
+
+    #[test]
+    fn test_list_valid_rows_2_both_not_edge() {
+        let rows = list_valid_rows(
+            2,
+            RowEdges {
+                left: false,
+                right: false,
+            },
+        );
+        assert_eq!(rows.len(), 9);
+    }
+
+    #[test]
+    fn test_list_valid_rows_3() {
+        let rows = list_valid_rows(
+            3,
+            RowEdges {
+                left: true,
+                right: true,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::NeedOne, Cell::Ok]));
+        assert_eq!(rows.len(), 15);
+    }
+
+    #[test]
+    fn test_list_valid_rows_3_left_not_edge() {
+        let rows = list_valid_rows(
+            3,
+            RowEdges {
+                left: false,
+                right: true,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::NeedOne, Cell::Ok]));
+        assert_eq!(rows.len(), 18);
+    }
+
+    #[test]
+    fn test_list_valid_rows_3_right_not_edge() {
+        let rows = list_valid_rows(
+            3,
+            RowEdges {
+                left: true,
+                right: false,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::NeedOne, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::NeedOne]));
+        assert_eq!(rows.len(), 18);
+    }
+
+    #[test]
+    fn test_list_valid_rows_3_both_not_edge() {
+        let rows = list_valid_rows(
+            3,
+            RowEdges {
+                left: false,
+                right: false,
+            },
+        );
+        assert!(!rows.contains(&vec![Cell::Stone, Cell::NeedOne, Cell::Stone]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::Ok, Cell::Ok, Cell::NeedOne]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::Ok]));
+        assert!(!rows.contains(&vec![Cell::NeedOne, Cell::Ok, Cell::NeedOne]));
+        assert_eq!(rows.len(), 22);
+    }
+
+    #[test_case::test_matrix(
+    [true,false],[true,false],[2,3,4,5]
+)]
+    fn test_list_valid_rows_4(left: bool, right: bool, width: usize) {
+        let rows = list_valid_rows(width, RowEdges { left, right });
+
+        let mut expected_rows = vec![];
+        'outer: for i in 0..3usize.pow(width as u32) {
+            let mut row = vec![];
+            for j in 0..width {
+                row.push(CELL_LIST[i / 3usize.pow(j as u32) % 3]);
+            }
+
+            // 左辺エッジ OK==0
+            if left && row[0] == Cell::Ok && (row[1] != Cell::Stone) {
+                continue;
+            }
+            // 真ん中
+            for j in 1..row.len() - 1 {
+                //  OK==0
+                if row[j - 1] != Cell::Stone && row[j] == Cell::Ok && row[j + 1] != Cell::Stone {
+                    continue 'outer;
+                }
+                // NeedOne == 2
+                if row[j - 1] == Cell::Stone && row[j] == Cell::NeedOne && row[j + 1] == Cell::Stone
+                {
+                    continue 'outer;
+                }
+            }
+            // 右辺エッジ
+            if right && row[row.len() - 1] == Cell::Ok && (row[row.len() - 2] != Cell::Stone) {
+                continue;
+            }
+            expected_rows.push(row);
+        }
+        let actual = HashSet::<&Vec<Cell>>::from_iter(rows.iter());
+        let expected = HashSet::<&Vec<Cell>>::from_iter(expected_rows.iter());
+        println!("Actual: {:?}", actual);
+        println!("Expected: {:?}", expected);
+        assert_eq!(
+            actual,
+            expected,
+            "\n過剰: {:?}\n不足: {:?}",
+            actual.difference(&expected).collect::<Vec<_>>(),
+            expected.difference(&actual).collect::<Vec<_>>(),
+        );
+    }
 }

@@ -1,7 +1,7 @@
 //! コストの決め方
 
 use crate::{
-    rules::{Cell, Edges, RowEdges, is_valid_row},
+    rules::{Cell, Edges, Problem, RowEdges, is_valid_row},
     transfer::INF,
 };
 
@@ -143,5 +143,105 @@ pub fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 
         ((2 * rows * cols) as i64 + min_cost) / 6
     } else {
         min_cost
+    }
+}
+
+fn _test_is_valid_row() {
+    let problem = Problem::Fair2;
+    let _edges = Edges {
+        top: true,
+        bottom: true,
+        left: true,
+        right: true,
+    };
+
+    let cell_list = [Cell::Ok, Cell::Stone, Cell::NeedOne];
+    let rows = 3;
+    let cols = 3;
+    let mut board = vec![vec![Cell::Ok; cols]; rows];
+    for i in 0..3usize.pow(9) {
+        board[i / cols][i % cols] = cell_list[i % 3];
+
+        // boardば適切か確認
+        let mut costs = vec![];
+        for row in 0..rows {
+            let mut cost = 0;
+            for col in 0..cols {
+                // 下のセルが不整合の場合の処理
+                if row < rows - 1 {
+                    if problem == Problem::Fair2
+                        && board[row][col] == Cell::Ok
+                        && board[row + 1][col] == Cell::Stone
+                    {
+                        cost = INF;
+                        break;
+                    }
+                    if board[row][col] == Cell::NeedOne && board[row + 1][col] != Cell::Stone {
+                        cost = INF;
+                        break;
+                    }
+                }
+                // 周りの石の数を数える
+                let mut stone_except_below = 0;
+                if row > 0 && board[row - 1][col] == Cell::Stone {
+                    stone_except_below += 1;
+                }
+                if col > 0 && board[row][col - 1] == Cell::Stone {
+                    stone_except_below += 1;
+                }
+                if col < cols - 1 && board[row][col + 1] == Cell::Stone {
+                    stone_except_below += 1;
+                }
+                let mut stone_arround = stone_except_below;
+                if row < rows - 1 && board[row + 1][col] == Cell::Stone {
+                    stone_arround += 1;
+                }
+
+                match board[row][col] {
+                    Cell::Ok => {
+                        if stone_except_below < 2 {
+                            cost = INF;
+                            break;
+                        } else if stone_except_below > 2 {
+                            if problem == Problem::Fair2 {
+                                cost = INF;
+                                break;
+                            } else {
+                                cost += stone_arround - 2;
+                            }
+                        }
+                    }
+                    Cell::NeedOne => {
+                        if stone_except_below != 1 {
+                            cost = INF;
+                        }
+                    }
+                    Cell::Stone => {
+                        cost += stone_arround;
+                        if row == 0 || row == rows - 1 {
+                            cost += 1;
+                        }
+                        if col == 0 || col == cols - 1 {
+                            cost += 1;
+                        }
+                    }
+                }
+            }
+            costs.push(cost);
+        }
+        for i in 0..rows {
+            assert_eq!(
+                (costs[i] != INF),
+                is_valid_row(
+                    &board[i],
+                    &Edges {
+                        top: i == 0,
+                        bottom: i == rows - 1,
+                        left: true,
+                        right: true
+                    }
+                )
+            );
+        }
     }
 }

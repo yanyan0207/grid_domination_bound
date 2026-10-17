@@ -63,6 +63,7 @@ impl Vector {
 ///
 /// a[i][k] を i から k、b[k][j] を k から j へのコストとすると、c[i][j] は k を経由して i から j へ行く最小コスト。
 /// 行列は m[遷移元][遷移先] の向きで渡す。INF どうしを足しても INF より大きくならないようにする
+#[allow(dead_code)]
 pub fn compose(a: &Matrix, b: &Matrix) -> Matrix {
     let cols = b.first().map_or(0, |row| row.len());
     a.iter()
@@ -132,6 +133,7 @@ impl Matrix {
     /// 転置する。t[j][i] = m[i][j]
     ///
     /// m[遷移元][遷移先] の行列なら、m[遷移先][遷移元] の向きになる
+    #[allow(dead_code)]
     pub fn transpose(&self) -> Matrix {
         let cols = self.first().map_or(0, |row| row.len());
         (0..cols)
@@ -142,6 +144,7 @@ impl Matrix {
     /// INF でない成分だけを持つ形にする。行 i は (列 j, m[i][j]) の一覧
     ///
     /// 行と列の向きはそのまま。m[遷移元][遷移先] なら、行ごとに遷移先の一覧になる
+    #[allow(dead_code)]
     pub fn to_sparse(&self) -> SparseMatrix {
         self.iter()
             .map(|row| {

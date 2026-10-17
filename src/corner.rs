@@ -106,11 +106,12 @@ pub fn corner_transition_matrix(
         matrix.push(result.dp_history.last().unwrap().clone());
         transition_path_list.push(result.transition_path);
     }
-    return CornerMatrixResult {
+
+    CornerMatrixResult {
         valid_rows: dp_config.valid_rows,
         cost_matrix: Matrix(matrix),
         transition_path_list,
-    };
+    }
 }
 
 fn add_cost_row_for_in_column(
@@ -139,7 +140,7 @@ fn add_cost_row_for_in_column(
                 cost += 1;
             }
         }
-    } else if in_column_cell == Cell::NeedOne {
+    } else {
         if next_row_cell != Cell::Stone {
             return INF;
         }

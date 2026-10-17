@@ -3,13 +3,12 @@
 //! 角（corner）と帯（band）の計算を組み合わせて、盤を一周する
 
 use crate::{
-    board::{calc_dp, init_dp},
     corner::{CornerMatrixResult, corner_transition_matrix},
     cost::{Cost, stone_number},
-    display::{print_cell, print_row},
-    matrix::{Matrix, compose, compose_with_via},
-    rules::{Cell, Edges, Problem, RowEdges, list_valid_rows},
-    transfer::{INF, build_transition_cost_matrix},
+    display::print_row,
+    matrix::compose_with_via,
+    rules::{Cell, Problem, RowEdges, list_valid_rows},
+    transfer::build_transition_cost_matrix,
 };
 
 /// 幅 cols、長さ rows の帯の最小コストの計算（未実装）。corner_size は角の一辺
@@ -47,7 +46,7 @@ pub fn border_cost_matrix(
     let CornerMatrixResult {
         valid_rows,
         cost_matrix: corner_matrix,
-        transition_path_list,
+        transition_path_list: _transition_path_list,
     } = corner_transition_matrix(corner_size, problem, cost, verbose);
 
     // 初期状態は左上の角の遷移コスト行列
@@ -123,6 +122,7 @@ pub fn border_cost_matrix(
     println!("左帯");
     let mut index = 0;
     let mut board: Vec<Vec<Option<Cell>>> = vec![vec![None; cols]; rows];
+    #[allow(clippy::needless_range_loop)]
     for row_index in corner_size - 1..rows - corner_size {
         let row = &valid_rows[path_list[index]];
         print_row(row);
@@ -132,6 +132,7 @@ pub fn border_cost_matrix(
         index += 1;
     }
     println!("下帯");
+    #[allow(clippy::needless_range_loop)]
     for col_index in corner_size - 1..cols - corner_size {
         let row = &valid_rows[path_list[index]];
         print_row(row);
@@ -160,10 +161,7 @@ pub fn border_cost_matrix(
     }
 
     println!("{:?}", board);
-    for i in 0..rows {
-        for j in 0..cols {
-            print_cell(board[i][j]);
-        }
-        println!();
+    for row in board {
+        print_row(&row);
     }
 }
