@@ -59,24 +59,6 @@ pub fn build_transition_costs(
     transition_costs
 }
 
-pub fn build_transition_pairs(
-    rows: &[Vec<Cell>],
-    problem: Problem,
-    row_edges: RowEdges,
-) -> Vec<Vec<usize>> {
-    let mut ret = vec![];
-    for prev_row in rows {
-        let mut valid_next_rows = vec![];
-        for (j, next_row) in rows.iter().enumerate() {
-            if is_valid_transition(prev_row, next_row, problem, row_edges) {
-                valid_next_rows.push(j);
-            }
-        }
-        ret.push(valid_next_rows);
-    }
-    ret
-}
-
 #[cfg(test)]
 mod tests {
     use crate::{

@@ -4,7 +4,6 @@ mod board;
 mod border;
 mod corner;
 mod cost;
-mod dfs;
 mod display;
 mod dp;
 mod matrix;
@@ -37,9 +36,6 @@ enum Command {
         /// 盤面の表示で Ok と NeedOne も区別する
         #[arg(short, long)]
         verbose: bool,
-        /// 計算の方式
-        #[arg(long, value_enum, default_value_t = MethodArg::Dp)]
-        method: MethodArg,
         /// コストの種類
         #[arg(long, value_enum, default_value_t = CostArg::Stones)]
         cost: CostArg,
@@ -74,24 +70,6 @@ enum Command {
         #[arg(short, long)]
         verbose: bool,
     },
-}
-
-/// --method の選択肢。board.rs を clap に依存させないため、ここで対応づける
-#[derive(Clone, Copy, ValueEnum)]
-enum MethodArg {
-    /// 転送行列（列ごとの DP）
-    Dp,
-    /// 全探索
-    Dfs,
-}
-
-impl From<MethodArg> for board::Method {
-    fn from(arg: MethodArg) -> Self {
-        match arg {
-            MethodArg::Dp => board::Method::Dp,
-            MethodArg::Dfs => board::Method::Dfs,
-        }
-    }
 }
 
 /// --cost の選択肢。cost.rs を clap に依存させないため、ここで対応づける
@@ -137,10 +115,9 @@ fn main() {
             m,
             problem,
             verbose,
-            method,
             cost,
         } => {
-            board::board(n, m, problem.into(), verbose, method.into(), cost.into());
+            board::board(n, m, problem.into(), verbose, cost.into());
         }
         Command::Border {
             n,
