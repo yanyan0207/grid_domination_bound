@@ -6,10 +6,36 @@ use crate::{
     corner::{CornerMatrixResult, corner_transition_matrix},
     cost::{Cost, stone_number},
     display::{BoardView, Dir, print_row},
-    matrix::{Matrix, compose_with_via},
+    matrix::Matrix,
     rules::{Problem, RowEdges, list_valid_rows},
-    transfer::build_transition_cost_matrix,
+    transfer::{INF, build_transition_cost_matrix},
 };
+use std::ops::Add;
+
+/// 総 loss と、そのうちの帯の loss の組
+///
+/// フィールドの順に比べるので、総 loss が小さいほうが優先され、総 loss が同じなら帯の loss が小さいほうが優先される
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+struct TotalAndBandLoss {
+    /// 角と帯を合わせた loss
+    total: i64,
+    /// 帯の loss
+    band: i64,
+}
+
+impl Add for TotalAndBandLoss {
+    type Output = TotalAndBandLoss;
+
+    fn add(self, other: TotalAndBandLoss) -> TotalAndBandLoss {
+        TotalAndBandLoss {
+            total: self.total + other.total,
+            band: self.band + other.band,
+        }
+    }
+}
+
+/// 成分が TotalAndBandLoss の行列。None はつながらない遷移
+type TotalAndBandLossMatrix = Vec<Vec<Option<TotalAndBandLoss>>>;
 
 /// 幅 corner_size の縁を一周したときの最小コストの計算。盤は rows × cols、corner_size は角の一辺
 pub fn border_cost_matrix(
@@ -41,29 +67,43 @@ pub fn border_cost_matrix(
     // 左上の角から反時計回りに、帯と角を交互につないで一周する
     let row_band_len = rows - corner_size * 2;
     let col_band_len = cols - corner_size * 2;
-    let mut border_matrix = corner_matrix.clone();
+    // 角の loss は総 loss だけに入り、帯の loss は総 loss と帯の loss の両方に入る
+    let corner_losses = to_total_and_band_losses(&corner_matrix, |loss| TotalAndBandLoss {
+        total: loss,
+        band: 0,
+    });
+    let band_row_losses = to_total_and_band_losses(&band_matrix, |loss| TotalAndBandLoss {
+        total: loss,
+        band: loss,
+    });
+    let mut border_losses = corner_losses.clone();
     let mut via_matrix_list = vec![];
-    let mut compose = |next: &Matrix| {
-        let (composed, via) = compose_with_via(&border_matrix, next);
-        border_matrix = composed;
+    let mut append = |band_row_or_corner_losses: &TotalAndBandLossMatrix| {
+        let (appended, via) =
+            append_band_row_or_corner_to_border(&border_losses, band_row_or_corner_losses);
+        border_losses = appended;
         via_matrix_list.push(via);
     };
     // 左帯 → 左下の角 → 下帯 → 右下の角 → 右帯 → 右上の角 → 上帯（左上の角は初期状態）
     let band_lens = [row_band_len, col_band_len, row_band_len, col_band_len];
     for (i, band_len) in band_lens.into_iter().enumerate() {
         for _ in 0..band_len {
-            compose(&band_matrix);
+            append(&band_row_losses);
         }
         if i < band_lens.len() - 1 {
-            compose(&corner_matrix);
+            append(&corner_losses);
         }
     }
 
     // 初期列と最後の列が一致してるものを選択
-    let (min_index, min_cost) = (0..valid_rows.len())
-        .map(|i| (i, border_matrix[i][i]))
-        .min_by_key(|&(_, value)| value)
+    let (min_index, min_loss) = (0..valid_rows.len())
+        .filter_map(|i| border_losses[i][i].map(|loss| (i, loss)))
+        .min_by_key(|&(_, loss)| loss)
         .unwrap();
+    let TotalAndBandLoss {
+        total: min_cost,
+        band: band_cost,
+    } = min_loss;
     let min_stone = stone_number(Cost::Loss, min_cost, rows, cols);
 
     // 経路を調べる
@@ -117,8 +157,65 @@ pub fn border_cost_matrix(
     // 結論
     board_view.println(verbose).unwrap();
     println!("min_index = {min_index}");
-    println!("min_cost = {min_cost}");
+    println!(
+        "min_cost = {min_cost}（角 {}、帯 {band_cost}）",
+        min_cost - band_cost
+    );
     println!("min_stone = {min_stone}");
+}
+
+/// loss の行列を TotalAndBandLoss の行列にする。loss が INF（つながらない）なら None
+fn to_total_and_band_losses(
+    matrix: &Matrix,
+    f: impl Fn(i64) -> TotalAndBandLoss,
+) -> TotalAndBandLossMatrix {
+    matrix
+        .iter()
+        .map(|row| {
+            row.iter()
+                .map(|&loss| if loss >= INF { None } else { Some(f(loss)) })
+                .collect()
+        })
+        .collect()
+}
+
+/// 縁を一周つなぐ途中で、ここまでの縁に、次の帯の 1 行か角を 1 つつなぐ
+///
+/// border_losses[start][current] は、縁の始まりの状態 start から今の状態 current までの (総 loss, 帯の loss)。
+/// band_row_or_corner_losses[current][next] は、帯の 1 行か角で current から next へ進む (総 loss, 帯の loss)。
+/// 経由する current は、総 loss が最小のものを選び、総 loss が同じなら帯の loss が小さいものを選ぶ。
+/// 戻り値は、つないだ後の縁の (総 loss, 帯の loss) の表と、そのとき経由した current の表。
+/// start から next へ行けないときは、どちらも None
+fn append_band_row_or_corner_to_border(
+    border_losses: &TotalAndBandLossMatrix,
+    band_row_or_corner_losses: &TotalAndBandLossMatrix,
+) -> (TotalAndBandLossMatrix, Vec<Vec<Option<usize>>>) {
+    let state_count = band_row_or_corner_losses.len();
+    let mut appended_border_losses = vec![vec![None; state_count]; border_losses.len()];
+    let mut via = vec![vec![None; state_count]; border_losses.len()];
+    for (start, border_losses_from_start) in border_losses.iter().enumerate() {
+        for (current, &border_loss_to_current) in border_losses_from_start.iter().enumerate() {
+            // 縁が current まで来られないなら飛ばす
+            let Some(border_loss_to_current) = border_loss_to_current else {
+                continue;
+            };
+            for (next, &band_row_or_corner_loss) in
+                band_row_or_corner_losses[current].iter().enumerate()
+            {
+                // 帯の 1 行か角で current から next へ進めないなら飛ばす
+                let Some(band_row_or_corner_loss) = band_row_or_corner_loss else {
+                    continue;
+                };
+                let border_loss_to_next = border_loss_to_current + band_row_or_corner_loss;
+                let min_border_loss_to_next = &mut appended_border_losses[start][next];
+                if min_border_loss_to_next.is_none_or(|min| border_loss_to_next < min) {
+                    *min_border_loss_to_next = Some(border_loss_to_next);
+                    via[start][next] = Some(current);
+                }
+            }
+        }
+    }
+    (appended_border_losses, via)
 }
 
 /// dir の向きに積む辺で、辺の始まりから k 行目、縁から j 番目のセルの盤上の位置 (行, 列)

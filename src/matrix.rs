@@ -87,6 +87,7 @@ pub fn compose(a: &Matrix, b: &Matrix) -> Matrix {
 ///
 /// 戻り値の via[i][j] は、c[i][j] が最小になったときの経由先 k（i → k → j）。
 /// c[i][j] が INF（i から j へ行けない）なら None。最小が同じ k が複数あるときは、番号の小さい方
+#[allow(dead_code)]
 pub fn compose_with_via(a: &Matrix, b: &Matrix) -> (Matrix, Vec<Vec<Option<usize>>>) {
     let cols = b.first().map_or(0, |row| row.len());
     let mut c = Vec::with_capacity(a.len());
