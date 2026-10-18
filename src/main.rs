@@ -71,17 +71,29 @@ enum Command {
         #[arg(short, long)]
         verbose: bool,
     },
-    /// 帯の行列の周期性の確認
+    /// 行を積む DP の周期性の確認
     Period {
-        /// 帯の幅
-        #[arg(short = 'w', long = "band-width", default_value_t = 5)]
-        band_width: usize,
+        /// 行の幅
+        #[arg(short = 'w', long = "width", default_value_t = 5)]
+        width: usize,
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
-        /// 調べる累乗の上限
+        /// コストの種類
+        #[arg(long, value_enum, default_value_t = CostArg::Loss)]
+        cost: CostArg,
+        /// 行の左端の外側
+        #[arg(long, value_enum)]
+        left: SideArg,
+        /// 行の右端の外側
+        #[arg(long, value_enum)]
+        right: SideArg,
+        /// 始まりの行の外側（open なら、どの状態からでも始める）
+        #[arg(long, value_enum)]
+        top: SideArg,
+        /// 進める行数の上限
         #[arg(long, default_value_t = 100)]
-        max_power: usize,
+        max_rows: usize,
     },
 }
 
@@ -100,6 +112,22 @@ impl From<CostArg> for cost::Cost {
             CostArg::Stones => cost::Cost::Stones,
             CostArg::Loss => cost::Cost::Loss,
         }
+    }
+}
+
+/// --left / --right / --top の選択肢。その辺の外側が何か
+#[derive(Clone, Copy, ValueEnum)]
+enum SideArg {
+    /// 盤の端（外側には何もない）
+    Edge,
+    /// 盤の内側（外側にまだマスがつながっている）
+    Open,
+}
+
+impl SideArg {
+    /// 盤の端なら true
+    fn is_edge(self) -> bool {
+        matches!(self, SideArg::Edge)
     }
 }
 
@@ -149,11 +177,23 @@ fn main() {
             corner::corner(corner_size, problem.into(), cost::Cost::Loss, verbose);
         }
         Command::Period {
-            band_width,
+            width,
             problem,
-            max_power,
+            cost,
+            left,
+            right,
+            top,
+            max_rows,
         } => {
-            period::band_period(band_width, problem.into(), max_power);
+            period::row_period(
+                width,
+                problem.into(),
+                cost.into(),
+                left.is_edge(),
+                right.is_edge(),
+                top.is_edge(),
+                max_rows,
+            );
         }
     }
 }

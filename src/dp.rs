@@ -143,8 +143,6 @@ pub fn calc_dp(
         cost_matrix,
     } = dp_config;
 
-    let valid_cnt = valid_rows.len();
-
     // 遷移コストの計算
     // 1行目の遷移コストを計算
     let dp = valid_rows
@@ -161,30 +159,17 @@ pub fn calc_dp(
     // 残りの行の遷移コストを計算
     let start = Instant::now();
     for row in 1..*rows {
-        // 対象の状態に遷移するためのコストを遷移先ごとに計算
-        let mut min_index_list = Vec::with_capacity(valid_cnt);
-        let mut next_dp = Vec::with_capacity(valid_cnt);
-        let dp = dp_history.last().unwrap();
-        for (next_index, costs) in cost_matrix.iter().enumerate() {
-            // 現在の行のインデックス next_index に対して、遷移元の行からの最小コストを計算
-            let min_costs = costs
-                .iter()
-                .map(|(prev_index, val)| {
-                    (
-                        prev_index,
-                        val + dp[*prev_index]
-                            + add_cost_for_next_row.map_or(0, |f| {
-                                f(row, Some(&valid_rows[*prev_index]), &valid_rows[next_index])
-                            }),
-                    )
+        let (next_dp, min_index_list) = next_row_dp(
+            dp_history.last().unwrap(),
+            cost_matrix,
+            |prev_index, next_index| {
+                add_cost_for_next_row.map_or(0, |f| {
+                    f(row, Some(&valid_rows[prev_index]), &valid_rows[next_index])
                 })
-                .min_by_key(|&(_prev_index, val)| val)
-                .unwrap();
-            min_index_list.push(*min_costs.0);
-            next_dp.push(min_costs.1);
-        }
+            },
+        );
         transition_path.push(min_index_list);
-        dp_history.push(Vector(next_dp));
+        dp_history.push(next_dp);
 
         // 進捗を標準エラー出力に、同じ行を上書きして表示する
         if verbose {
@@ -227,6 +212,35 @@ pub fn calc_dp(
         min_pattern,
         transition_path,
     }
+}
+
+/// DP を 1 行進める。dp[i] は、今の行が状態 i になるまでの最小コスト
+///
+/// cost_matrix[next] は (遷移元 prev, 遷移コスト) の一覧。add_cost(prev, next) は遷移コストに足す追加のコスト。
+/// 戻り値は (次の行の dp, 次の行の状態ごとの、最小になったときの遷移元)
+pub fn next_row_dp(
+    dp: &Vector,
+    cost_matrix: &SparseMatrix,
+    add_cost: impl Fn(usize, usize) -> i64,
+) -> (Vector, Vec<usize>) {
+    let mut next_dp = Vec::with_capacity(cost_matrix.len());
+    let mut min_index_list = Vec::with_capacity(cost_matrix.len());
+    for (next_index, costs) in cost_matrix.iter().enumerate() {
+        // 次の行の状態 next_index に、遷移元の行から来る最小コスト
+        let (min_prev_index, min_cost) = costs
+            .iter()
+            .map(|&(prev_index, cost)| {
+                (
+                    prev_index,
+                    cost + dp[prev_index] + add_cost(prev_index, next_index),
+                )
+            })
+            .min_by_key(|&(_, cost)| cost)
+            .unwrap();
+        min_index_list.push(min_prev_index);
+        next_dp.push(min_cost);
+    }
+    (Vector(next_dp), min_index_list)
 }
 
 /// calc_dp の結果（最小コストと、それに至る盤面）を表示する

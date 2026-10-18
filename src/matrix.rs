@@ -63,6 +63,7 @@ impl Vector {
 ///
 /// a[i][k] を i から k、b[k][j] を k から j へのコストとすると、c[i][j] は k を経由して i から j へ行く最小コスト。
 /// 行列は m[遷移元][遷移先] の向きで渡す。INF どうしを足しても INF より大きくならないようにする
+#[allow(dead_code)]
 pub fn compose(a: &Matrix, b: &Matrix) -> Matrix {
     let cols = b.first().map_or(0, |row| row.len());
     a.iter()
