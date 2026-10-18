@@ -12,9 +12,11 @@ pub fn board(rows: usize, cols: usize, problem: Problem, verbose: bool, cost: Co
     let result = calc_dp(&dp_config, None, verbose);
     print_dp_result(&dp_config, &result);
     let (min_cost, stone_num) = (result.min_cost, result.stone_num);
-    if verbose {
-        println!("石の数: {stone_num}");
-    }
+    // 盤全体の置き方では 6|D| = 2nm + loss がちょうど成り立つので、石の数から loss を求める
+    // （--cost stones のときは DP が loss を計算しないため）
+    let loss = 6 * stone_num - 2 * (rows * cols) as i64;
+    println!("石の数: {stone_num}");
+    println!("loss: {loss}");
     (min_cost, stone_num)
 }
 
