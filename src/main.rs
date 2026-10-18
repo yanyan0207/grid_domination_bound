@@ -7,6 +7,7 @@ mod cost;
 mod display;
 mod dp;
 mod matrix;
+mod period;
 mod rules;
 mod transfer;
 
@@ -69,6 +70,18 @@ enum Command {
         /// 詳しい表示
         #[arg(short, long)]
         verbose: bool,
+    },
+    /// 帯の行列の周期性の確認
+    Period {
+        /// 帯の幅
+        #[arg(short = 'w', long = "band-width", default_value_t = 5)]
+        band_width: usize,
+        /// 問題の種類
+        #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
+        problem: ProblemArg,
+        /// 調べる累乗の上限
+        #[arg(long, default_value_t = 100)]
+        max_power: usize,
     },
 }
 
@@ -134,6 +147,13 @@ fn main() {
             verbose,
         } => {
             corner::corner(corner_size, problem.into(), cost::Cost::Loss, verbose);
+        }
+        Command::Period {
+            band_width,
+            problem,
+            max_power,
+        } => {
+            period::band_period(band_width, problem.into(), max_power);
         }
     }
 }
