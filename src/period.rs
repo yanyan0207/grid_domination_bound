@@ -14,7 +14,7 @@ use crate::{
     cost::Cost,
     dp::{init_dp, next_row_dp},
     matrix::{SparseMatrix, Vector},
-    rules::{Edges, Problem},
+    rules::{Edges, Graph, Problem},
     transfer::INF,
 };
 
@@ -35,6 +35,7 @@ pub struct Period {
 /// top_is_edge は始まりの行の外側が盤の端か
 pub fn row_period(
     width: usize,
+    graph: Graph,
     problem: Problem,
     cost: Cost,
     left_is_edge: bool,
@@ -49,7 +50,7 @@ pub fn row_period(
         left: left_is_edge,
         right: right_is_edge,
     };
-    let dp_config = init_dp(max_rows, width, problem, cost, edges, false);
+    let dp_config = init_dp(max_rows, width, graph, problem, cost, edges, false);
     let state_count = dp_config.valid_rows.len();
 
     let start_vectors: Vec<Vector> = if top_is_edge {
@@ -57,7 +58,7 @@ pub fn row_period(
             dp_config
                 .valid_rows
                 .iter()
-                .map(|row| cost.first_row(row, &edges))
+                .map(|row| cost.first_row(graph, problem, row, &edges))
                 .collect(),
         ]
     } else {
@@ -71,7 +72,7 @@ pub fn row_period(
     };
 
     println!(
-        "幅 {width}、problem = {problem}、cost = {cost:?}、左端 {}、右端 {}、始まりの行 {}、状態の数 {state_count}、始まりのベクトルの数 {}",
+        "幅 {width}、graph = {graph}、problem = {problem}、cost = {cost:?}、左端 {}、右端 {}、始まりの行 {}、状態の数 {state_count}、始まりのベクトルの数 {}",
         side_text(left_is_edge),
         side_text(right_is_edge),
         side_text(top_is_edge),

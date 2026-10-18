@@ -12,7 +12,7 @@ mod rules;
 mod transfer;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use rules::Problem;
+use rules::{Graph, Problem};
 
 #[derive(Parser)]
 #[command(name = "border-loss")]
@@ -31,10 +31,13 @@ enum Command {
         /// 盤の列数（1 行の状態の幅）
         #[arg(short = 'm', long = "columns", default_value_t = 6)]
         m: usize,
+        /// グラフの種類
+        #[arg(long, value_enum, default_value_t = GraphArg::Grid)]
+        graph: GraphArg,
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
-        /// 盤面の表示で Ok と NeedOne も区別する
+        /// 盤面の表示で Ok と NeedOne / NeedTwo も区別する
         #[arg(short, long)]
         verbose: bool,
         /// コストの種類
@@ -52,6 +55,9 @@ enum Command {
         /// 角の一辺の長さ
         #[arg(short = 'c', long = "corner-size", default_value_t = 6)]
         corner_size: usize,
+        /// グラフの種類
+        #[arg(long, value_enum, default_value_t = GraphArg::Grid)]
+        graph: GraphArg,
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
@@ -64,6 +70,9 @@ enum Command {
         /// 角の一辺の長さ
         #[arg(short = 'c', long = "corner-size", default_value_t = 6)]
         corner_size: usize,
+        /// グラフの種類
+        #[arg(long, value_enum, default_value_t = GraphArg::Grid)]
+        graph: GraphArg,
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
@@ -76,6 +85,9 @@ enum Command {
         /// 行の幅
         #[arg(short = 'w', long = "width", default_value_t = 5)]
         width: usize,
+        /// グラフの種類
+        #[arg(long, value_enum, default_value_t = GraphArg::Grid)]
+        graph: GraphArg,
         /// 問題の種類
         #[arg(long, value_enum, default_value_t = ProblemArg::Dom)]
         problem: ProblemArg,
@@ -131,6 +143,24 @@ impl SideArg {
     }
 }
 
+/// --graph の選択肢。rules.rs を clap に依存させないため、ここで対応づける
+#[derive(Clone, Copy, ValueEnum)]
+enum GraphArg {
+    /// グリッドグラフ（縦横の 4 方向が隣）
+    Grid,
+    /// キンググラフ（縦横斜めの 8 方向が隣）
+    King,
+}
+
+impl From<GraphArg> for Graph {
+    fn from(arg: GraphArg) -> Self {
+        match arg {
+            GraphArg::Grid => Graph::Grid,
+            GraphArg::King => Graph::King,
+        }
+    }
+}
+
 /// --problem の選択肢。rules.rs を clap に依存させないため、ここで対応づける
 #[derive(Clone, Copy, ValueEnum)]
 enum ProblemArg {
@@ -154,30 +184,46 @@ fn main() {
         Command::Board {
             n,
             m,
+            graph,
             problem,
             verbose,
             cost,
         } => {
-            board::board(n, m, problem.into(), verbose, cost.into());
+            board::board(n, m, graph.into(), problem.into(), verbose, cost.into());
         }
         Command::Border {
             n,
             m,
             corner_size,
+            graph,
             problem,
             verbose,
-        } => {
-            border::border_cost_matrix(n, m, corner_size, problem.into(), cost::Cost::Loss, verbose)
-        }
+        } => border::border_cost_matrix(
+            n,
+            m,
+            corner_size,
+            graph.into(),
+            problem.into(),
+            cost::Cost::Loss,
+            verbose,
+        ),
         Command::Corner {
             corner_size,
+            graph,
             problem,
             verbose,
         } => {
-            corner::corner(corner_size, problem.into(), cost::Cost::Loss, verbose);
+            corner::corner(
+                corner_size,
+                graph.into(),
+                problem.into(),
+                cost::Cost::Loss,
+                verbose,
+            );
         }
         Command::Period {
             width,
+            graph,
             problem,
             cost,
             left,
@@ -187,6 +233,7 @@ fn main() {
         } => {
             period::row_period(
                 width,
+                graph.into(),
                 problem.into(),
                 cost.into(),
                 left.is_edge(),

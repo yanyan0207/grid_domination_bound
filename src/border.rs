@@ -7,7 +7,7 @@ use crate::{
     cost::{Cost, stone_number},
     display::{BoardView, Dir, print_row},
     matrix::Matrix,
-    rules::{Problem, RowEdges, list_valid_rows},
+    rules::{Graph, Problem, RowEdges, list_valid_rows},
     transfer::{INF, build_transition_cost_matrix},
 };
 use std::ops::Add;
@@ -42,12 +42,13 @@ pub fn border_cost_matrix(
     rows: usize,
     cols: usize,
     corner_size: usize,
+    graph: Graph,
     problem: Problem,
     cost: Cost,
     verbose: bool,
 ) {
     println!(
-        "border matrix: rows = {rows}, cols = {cols}, corner_size = {corner_size}, problem = {problem}, cost = {cost:?}, verbose = {verbose}"
+        "border matrix: rows = {rows}, cols = {cols}, corner_size = {corner_size}, graph = {graph}, problem = {problem}, cost = {cost:?}, verbose = {verbose}"
     );
 
     // 帯の遷移コスト行列（左端が盤の端）
@@ -55,18 +56,26 @@ pub fn border_cost_matrix(
         left: true,
         right: false,
     };
-    let band_rows = list_valid_rows(corner_size, edges);
-    let band_matrix = build_transition_cost_matrix(&band_rows, problem, cost, edges);
+    let band_rows = list_valid_rows(corner_size, graph, problem, edges);
+    let band_matrix = build_transition_cost_matrix(&band_rows, graph, problem, cost, edges);
     // 角の遷移コスト行列
     let CornerMatrixResult {
         valid_rows,
         cost_matrix: corner_matrix,
-        transition_path_list,
-    } = corner_transition_matrix(corner_size, problem, cost, verbose);
+        paths: corner_paths,
+        rows_in_corner,
+    } = corner_transition_matrix(corner_size, graph, problem, cost, verbose);
 
-    // 左上の角から反時計回りに、帯と角を交互につないで一周する
-    let row_band_len = rows - corner_size * 2;
-    let col_band_len = cols - corner_size * 2;
+    // 左上の角から反時計回りに、帯と角を交互につないで一周する。
+    // 各辺は、角の行（rows_in_corner 行）と、それに続く帯の行からなり、合わせて辺の長さ − corner_size 行
+    let extra_rows_in_corner = rows_in_corner - corner_size;
+    let min_side_len = corner_size * 2 + extra_rows_in_corner;
+    if rows < min_side_len || cols < min_side_len {
+        println!("盤が小さすぎて縁が入らない（各辺 {min_side_len} 以上が必要）");
+        return;
+    }
+    let row_band_len = rows - min_side_len;
+    let col_band_len = cols - min_side_len;
     // 角の loss は総 loss だけに入り、帯の loss は総 loss と帯の loss の両方に入る
     let corner_losses = to_total_and_band_losses(&corner_matrix, |loss| TotalAndBandLoss {
         total: loss,
@@ -104,7 +113,7 @@ pub fn border_cost_matrix(
         total: min_cost,
         band: band_cost,
     } = min_loss;
-    let min_stone = stone_number(Cost::Loss, min_cost, rows, cols);
+    let min_stone = stone_number(graph, Cost::Loss, min_cost, rows, cols);
 
     // 経路を調べる
     let mut prev_index = min_index;
@@ -136,7 +145,7 @@ pub fn border_cost_matrix(
             path_list[p - 1]
         };
         // 角の行（最後が出力行）と、それに続く帯の行
-        let mut side_rows = corner_path(&transition_path_list[in_index], path_list[p]);
+        let mut side_rows = corner_paths[in_index][path_list[p]].clone();
         side_rows.extend(&path_list[p + 1..=p + band_len]);
         if verbose {
             println!("{name}");
@@ -230,16 +239,4 @@ fn side_position(dir: Dir, k: usize, j: usize, rows: usize, cols: usize) -> (usi
         // 上辺: 右から左へ積む。縁は上端
         Dir::Left => (j, cols - 1 - k),
     }
-}
-
-/// 角の DP の経路 transition_path を、出力行 out_index から逆にたどって、角の行を上から順に返す
-fn corner_path(transition_path: &[Vec<usize>], out_index: usize) -> Vec<usize> {
-    let mut index = out_index;
-    let mut path = vec![index];
-    for transition in transition_path.iter().rev() {
-        index = transition[index];
-        path.push(index);
-    }
-    path.reverse();
-    path
 }

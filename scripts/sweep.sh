@@ -4,7 +4,7 @@
 # 使い方: bash scripts/sweep.sh [dom|fair] [最小の n] [最大の n] [stones|loss] [board に渡す追加の引数...]
 #   例: bash scripts/sweep.sh fair 2 15
 #       bash scripts/sweep.sh dom 2 8 loss
-#       bash scripts/sweep.sh dom 2 8 stones --method dfs
+#       bash scripts/sweep.sh fair 2 12 stones --graph king
 
 set -euo pipefail
 

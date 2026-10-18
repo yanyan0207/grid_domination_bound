@@ -6,8 +6,8 @@ use crate::{
     cost::{Cost, stone_number},
     display::print_row_with_cost,
     matrix::{SparseMatrix, Vector},
-    rules::{Cell, Edges, Problem, list_valid_rows},
-    transfer::build_transition_costs,
+    rules::{Cell, Edges, Graph, Problem, list_valid_rows},
+    transfer::{INF, build_transition_costs},
 };
 
 /// 前の行（先頭行なら `None`）と次の行を受け取り、コストを追加する関数
@@ -18,6 +18,8 @@ pub struct DpConfig {
     pub rows: usize,
     /// 列数
     pub cols: usize,
+    /// グラフの種類
+    pub graph: Graph,
     /// 問題の種類
     pub problem: Problem,
     /// コストの種類
@@ -36,6 +38,7 @@ impl fmt::Display for DpConfig {
         writeln!(f, "DpConfig {{")?;
         writeln!(f, "\trows: {}", self.rows)?;
         writeln!(f, "\tcols: {}", self.cols)?;
+        writeln!(f, "\tgraph: {:?}", self.graph)?;
         writeln!(f, "\tproblem: {:?}", self.problem)?;
         writeln!(f, "\tcost: {:?}", self.cost)?;
         writeln!(f, "\tedges: {:?}", self.edges)?;
@@ -76,6 +79,7 @@ pub struct DpResult {
 pub fn init_dp(
     rows: usize,
     cols: usize,
+    graph: Graph,
     problem: Problem,
     cost: Cost,
     edges: Edges,
@@ -83,14 +87,14 @@ pub fn init_dp(
 ) -> DpConfig {
     if verbose {
         println!("init_dp start");
-        println!("board: rows = {rows}, cols = {cols}, problem = {problem}");
+        println!("board: rows = {rows}, cols = {cols}, graph = {graph}, problem = {problem}");
     }
 
     let row_edges = edges.row();
 
     // 有効な行のリストを取得(左端が端、右端が端)
     let valid_rows_start = Instant::now();
-    let valid_rows = list_valid_rows(cols, row_edges);
+    let valid_rows = list_valid_rows(cols, graph, problem, row_edges);
     let valid_cnt = valid_rows.len();
     if verbose {
         println!("valid_count = {valid_cnt}");
@@ -104,7 +108,7 @@ pub fn init_dp(
     // コストは --cost で選んだもの
     // 作られる遷移コスト行列は、遷移先の行が行、遷移元の行が列となる
     let cost_matrix_start = Instant::now();
-    let cost_matrix = build_transition_costs(&valid_rows, problem, cost, row_edges);
+    let cost_matrix = build_transition_costs(&valid_rows, graph, problem, cost, row_edges);
     let cost_matrix_seconds = cost_matrix_start.elapsed().as_secs_f64();
     let transition_cnt = cost_matrix.iter().map(|row| row.len()).sum::<usize>();
 
@@ -119,6 +123,7 @@ pub fn init_dp(
     DpConfig {
         rows,
         cols,
+        graph,
         problem,
         cost,
         edges,
@@ -136,7 +141,8 @@ pub fn calc_dp(
     let DpConfig {
         rows,
         cols,
-        problem: _problem,
+        graph,
+        problem,
         cost,
         edges,
         valid_rows,
@@ -148,7 +154,8 @@ pub fn calc_dp(
     let dp = valid_rows
         .iter()
         .map(|row| {
-            cost.first_row(row, edges) + add_cost_for_next_row.map_or(0, |f| f(0, None, row))
+            cost.first_row(*graph, *problem, row, edges)
+                + add_cost_for_next_row.map_or(0, |f| f(0, None, row))
         })
         .collect::<Vector>();
     let mut dp_history = vec![dp.clone()];
@@ -188,7 +195,7 @@ pub fn calc_dp(
     let dp = dp_history.last_mut().unwrap();
     if edges.bottom {
         for (i, valid_row) in valid_rows.iter().enumerate() {
-            dp[i] += cost.last_row_addition(edges.row(), valid_row);
+            dp[i] += cost.last_row_addition(*graph, edges.row(), valid_row);
         }
     }
 
@@ -207,7 +214,7 @@ pub fn calc_dp(
 
     DpResult {
         min_cost,
-        stone_num: stone_number(*cost, min_cost, *rows, *cols),
+        stone_num: stone_number(*graph, *cost, min_cost, *rows, *cols),
         dp_history,
         min_pattern,
         transition_path,
@@ -226,7 +233,7 @@ pub fn next_row_dp(
     let mut next_dp = Vec::with_capacity(cost_matrix.len());
     let mut min_index_list = Vec::with_capacity(cost_matrix.len());
     for (next_index, costs) in cost_matrix.iter().enumerate() {
-        // 次の行の状態 next_index に、遷移元の行から来る最小コスト
+        // 次の行の状態 next_index に、遷移元の行から来る最小コスト。どの行からも来られなければ INF
         let (min_prev_index, min_cost) = costs
             .iter()
             .map(|&(prev_index, cost)| {
@@ -236,7 +243,7 @@ pub fn next_row_dp(
                 )
             })
             .min_by_key(|&(_, cost)| cost)
-            .unwrap();
+            .unwrap_or((0, INF));
         min_index_list.push(min_prev_index);
         next_dp.push(min_cost);
     }

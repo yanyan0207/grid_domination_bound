@@ -11,6 +11,7 @@ fn cell_char(cell: Option<Cell>) -> char {
         Some(Cell::Stone) => '#',
         Some(Cell::Ok) => 'o',
         Some(Cell::NeedOne) => '?',
+        Some(Cell::NeedTwo) => '2',
     }
 }
 
@@ -38,7 +39,8 @@ pub fn print_row_with_cost(row: &[Cell], verbose: bool, step_cost: Option<(i64, 
             Cell::Stone => '#',
             Cell::Ok => '.',
             Cell::NeedOne if verbose => '?',
-            Cell::NeedOne => '.',
+            Cell::NeedTwo if verbose => '2',
+            Cell::NeedOne | Cell::NeedTwo => '.',
         })
         .collect();
     match step_cost {
@@ -47,7 +49,7 @@ pub fn print_row_with_cost(row: &[Cell], verbose: bool, step_cost: Option<(i64, 
     }
 }
 
-/// 行を積む方向（次の行が来る向き）。Ok と NeedOne はこの向きの隣に対する状態
+/// 行を積む方向（次の行が来る向き）。Ok / NeedOne / NeedTwo はこの向きの隣に対する状態
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[allow(dead_code)]
 pub enum Dir {
