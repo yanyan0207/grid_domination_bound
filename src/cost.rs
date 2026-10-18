@@ -137,10 +137,15 @@ fn transition_loss(prev: &[Cell], next: &[Cell], row_edges: RowEdges) -> i64 {
     cost
 }
 
-/// 最小コストから石の数を求める。loss のときは |D| = (2nm + ℓ) / 6
+/// 最小コストから石の数を求める。loss のときは 6|D| = 2nm + ℓ から |D| = (2nm + ℓ) / 6
+///
+/// 実際の置き方なら 2nm + ℓ は 6 で割り切れる。縁の計算のように ℓ が下界のときは割り切れないことがあり、
+/// 石の数は整数なので、6 で割って切り上げた値が石の数の下界になる
 pub fn stone_number(cost: Cost, min_cost: i64, rows: usize, cols: usize) -> i64 {
     if cost == Cost::Loss {
-        ((2 * rows * cols) as i64 + min_cost) / 6
+        let six_times_stones = (2 * rows * cols) as i64 + min_cost;
+        // 6 で割って切り上げる
+        (six_times_stones + 5) / 6
     } else {
         min_cost
     }
