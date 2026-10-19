@@ -1,0 +1,15 @@
+幅 2、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 7、始まりのベクトルの数 7
+r0 = 17, k = 1, p = 1
+1 行あたりの増え方 = 1
+幅 3、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 18、始まりのベクトルの数 18
+r0 = 37, k = 7, p = 8
+1 行あたりの増え方 = 1.1428571428571428
+幅 4、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 45、始まりのベクトルの数 45
+r0 = 20, k = 12, p = 19
+1 行あたりの増え方 = 1.5833333333333333
+幅 5、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 111、始まりのベクトルの数 111
+r0 = 45, k = 1, p = 2
+1 行あたりの増え方 = 2
+幅 6、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 276、始まりのベクトルの数 276
+r0 = 20, k = 3, p = 6
+1 行あたりの増え方 = 2

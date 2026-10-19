@@ -1,0 +1,15 @@
+幅 2、graph = grid、problem = 2-fair、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 7、始まりのベクトルの数 7
+r0 = 27, k = 1, p = 1
+1 行あたりの増え方 = 1
+幅 3、graph = grid、problem = 2-fair、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 18、始まりのベクトルの数 18
+r0 = 13, k = 11, p = 15
+1 行あたりの増え方 = 1.3636363636363635
+幅 4、graph = grid、problem = 2-fair、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 45、始まりのベクトルの数 45
+r0 = 41, k = 1, p = 2
+1 行あたりの増え方 = 2
+幅 5、graph = grid、problem = 2-fair、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 111、始まりのベクトルの数 111
+r0 = 28, k = 3, p = 6
+1 行あたりの増え方 = 2
+幅 6、graph = grid、problem = 2-fair、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 276、始まりのベクトルの数 276
+r0 = 27, k = 3, p = 6
+1 行あたりの増え方 = 2

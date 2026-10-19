@@ -1,0 +1,3 @@
+幅 3、graph = grid、problem = 2-domination、cost = Loss、左端 edge、右端 open、始まりの行 open、状態の数 18、始まりのベクトルの数 18
+r0 = 37, k = 7, p = 8
+1 行あたりの増え方 = 1.1428571428571428
