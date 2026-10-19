@@ -56,7 +56,7 @@ pub fn corner(corner_size: usize, graph: Graph, problem: Problem, cost: Cost, ve
 
     let path_list = &paths[min_in_col_index][min_out_row_index];
     println!("path_list = {:?}", path_list);
-    let mut board_view = BoardView::new(corner_size * 2, corner_size * 2);
+    let mut board_view = BoardView::new(corner_size * 2 + 1, corner_size * 2 + 1);
     board_view.set_col(0, corner_size, &valid_rows[min_in_col_index], Dir::Left);
     for (row_index, &valid_row_index) in path_list.iter().enumerate() {
         board_view.set_row(row_index, 0, &valid_rows[valid_row_index], Dir::Down);
@@ -71,7 +71,7 @@ pub struct CornerMatrixResult {
     pub cost_matrix: Matrix,
     /// paths[入力列][出力行] は、そのときの角の行の番号の列（上から順。最後が出力行）。つながらなければ空
     pub paths: Vec<Vec<Vec<usize>>>,
-    /// 角で積む行の数。Grid は corner_size（出力行は角の最後の行）、King は corner_size + 1（出力行は角のすぐ下の行）
+    /// 角で積む行の数。Grid も King も corner_size + 1（出力行は、一辺 corner_size の正方形のすぐ下の行）
     pub rows_in_corner: usize,
 }
 
@@ -105,11 +105,13 @@ fn corner_transition_matrix_grid(
     cost: Cost,
     verbose: bool,
 ) -> CornerMatrixResult {
+    // 角の行は、一辺 corner_size の正方形の行と、そのすぐ下の出力行（下の帯の最初の行）。King と同じ作り
+    let rows_in_corner = corner_size + 1;
     // 角の入力列(左上隅の角の右列の右隣の列)ごとにDPを計算
     let mut matrix = vec![];
     let mut paths = vec![];
     let dp_config = init_dp(
-        corner_size,
+        rows_in_corner,
         corner_size,
         Graph::Grid,
         problem,
@@ -124,7 +126,12 @@ fn corner_transition_matrix_grid(
         let result = calc_dp(
             &dp_config,
             Some(&|row_index, prev_row, next_row| {
-                add_cost_row_for_in_column(row_index, prev_row, next_row, in_column, problem)
+                // 入力列と隣り合うのは正方形の行だけ。出力行は正方形のすぐ下で、右端の外は盤の内部
+                if row_index < corner_size {
+                    add_cost_row_for_in_column(row_index, prev_row, next_row, in_column, problem)
+                } else {
+                    0
+                }
             }),
             verbose,
         );
@@ -152,7 +159,7 @@ fn corner_transition_matrix_grid(
         valid_rows: dp_config.valid_rows,
         cost_matrix: Matrix(matrix),
         paths,
-        rows_in_corner: corner_size,
+        rows_in_corner,
     }
 }
 
