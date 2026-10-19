@@ -1,1 +1,9 @@
 /target
+
+# 論文は原稿だけを管理する（LaTeX の作業ファイルや PDF は入れない）
+/paper/*
+!/paper/main.ja.tex
+!/paper/main.en.tex
+
+# LaTeX をリポジトリの直下で実行したときにできるファイル
+/texput.log

@@ -1,0 +1,408 @@
+% 下書き（日本語版）: 下界の論文
+% コンパイル: lualatex main.ja.tex（参照の番号を確定させるため 2 回）
+\documentclass[11pt]{ltjsarticle}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{定理}
+\newtheorem{lemma}[theorem]{補題}
+\newtheorem{proposition}[theorem]{命題}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定義}
+\newtheorem{remark}[theorem]{注意}
+\renewcommand{\proofname}{証明}
+
+\newcommand{\gf}{\gamma_{2\mathrm{f}}}
+\newcommand{\iv}[1]{[\,#1\,]}
+\newcommand{\stone}{\textsc{stone}}
+\newcommand{\ok}{\textsc{ok}}
+\newcommand{\needone}{\textsc{need\_one}}
+
+\title{格子グラフの 2-fair 支配数の下界}
+\author{TODO}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+グラフの頂点の集合 $D$ が \emph{2-fair 支配集合}であるとは、$D$ に入らないどの頂点も、$D$ の頂点とちょうど 2 つ隣接することをいう。
+本稿では、$n\times m$ の格子グラフ $P_n \square P_m$ の 2-fair 支配集合の最小の大きさ $\gf(n,m)$ について、
+$8\le n\le m$ のすべてで
+$\gf(n,m)\ge \lceil (n+2)(m+2)/3\rceil-6+\iv{n\not\equiv m \pmod 3}$
+が成り立つことを示す。
+証明は、Rao と Talon が 2-支配数で用いた方法に従う。
+小さい行数では $(\min,+)$ 代数の転送行列で厳密な値を求め、大きい行数では格子の縁における \emph{loss} の下界を用いる。
+\end{abstract}
+
+\section{はじめに}
+
+グラフ $G$ の頂点の集合 $D$ が \emph{$k$-fair 支配集合}であるとは、$D$ に入らないどの頂点も、$D$ の頂点とちょうど $k$ 個隣接することをいう~\cite{CHH}。
+同じ概念は \emph{perfect $k$-domination} とも呼ばれる~\cite{CCV}。
+その最小の大きさを $k$-fair 支配数という。
+一般のグラフでは、$k$-fair 支配集合の判定問題は NP 完全である~\cite[定理 16]{CCV}。
+Hung~\cite{Hung} は、格子グラフ（無限の格子の有限な誘導部分グラフで、形は長方形に限らない）上で 1-fair 支配問題が NP 完全であることを示し、
+2-fair 支配問題の計算量は未解決であると述べている。
+また、斜めの隣接も加えた長方形のグラフ（キンググラフ）については、1 行と 2 行の場合の 2-fair 支配数を求めている。
+一方、長方形の格子グラフ $P_n\square P_m$ の 2-fair 支配数の値は、我々の知る限り知られていない。
+
+似た問題である 2-支配（$D$ に入らないどの頂点も、$D$ の頂点と 2 つ以上隣接する）については、
+Rao と Talon~\cite{RT} が、すべての $n,m$ について長方形の格子グラフの 2-支配数 $\gamma_2(n,m)$ を決定した。
+彼らの方法は、行数の小さい格子には $(\min,+)$ 代数の転送行列を、大きい格子には Gon\c{c}alves ら~\cite{GPRT} が導入した \emph{loss} を用いる。
+本稿では、この方法を 2-fair 支配に適用して、下界を示す。
+
+以下、$1\le n\le m$ とし、格子 $G_{n,m}$ は $n$ 行 $m$ 列とする。
+頂点 $v$ に隣接する頂点（$v$ 自身は含まない）の集合を $N(v)$ と書く。$G_{n,m}$ では、$N(v)$ は $v$ の上下左右のうち格子の中にあるものである。
+$\iv{P}$ は、命題 $P$ が成り立つとき $1$、成り立たないとき $0$ を表す。
+次の式を $F(n,m)$ とおく。
+\[
+F(n,m)=\left\lceil\frac{(n+2)(m+2)}{3}\right\rceil-6+\iv{n\not\equiv m \pmod 3}.
+\]
+
+\begin{theorem}[主定理]\label{thm:main}
+$8\le n\le m$ ならば $\gf(n,m)\ge F(n,m)$。
+\end{theorem}
+
+$n\le 7$ では、この下界は一般には成り立たない。例えば $\gf(7,14)=42<43=F(7,14)$ である（定理~\ref{thm:small}）。
+
+主定理の証明は 2 つに分かれる。
+$n\in\{8,9,10\}$ は、行数を固定した転送行列で、すべての $m$ についての厳密な値を求めて示す（\ref{sec:small} 節）。
+$n\ge 11$ は、格子の縁の loss の下界から示す（\ref{sec:large} 節）。
+どちらの場合も、有限個の場合の計算と、転送行列の周期性を組み合わせる。
+計算については \ref{sec:computation} 節で述べる。
+
+\section{loss}
+
+Rao と Talon~\cite{RT} に従い、loss を次のように定義する。
+
+\begin{definition}[\cite{RT}]
+$G_{n,m}$ の 2-支配集合 $D$ の \emph{loss} を
+\[
+\ell(D)=4|D|-2(nm-|D|)
+\]
+と定める。
+\end{definition}
+
+2-fair 支配集合は 2-支配集合でもあるので、この定義はそのまま使える。定義を $|D|$ について整理すると
+\begin{equation}\label{eq:loss}
+6|D| = 2nm+\ell(D)
+\end{equation}
+となる。よって、$\ell(D)$ の下界から $|D|$ の下界が得られる。
+
+縁の下界（\ref{sec:large} 節）を正しく言うには、「格子の一部だけで数えた loss は、全体の loss 以下である」という性質が要る。
+Gon\c{c}alves ら~\cite{GPRT} は、支配について loss を頂点の部分集合に対して定義し、その単調性から縁の下界を導いた。
+2-支配の loss~\cite{RT} についてはこの性質が明示されていないので、ここでは loss を局所的な項の和に分けることで、同じ役割を果たす補題を示す。
+
+loss は、次のように局所的な項の和に分けられる。
+$D$ に入る頂点を石と呼び、$D$ の中の辺の数（隣り合う石の組の数）を $e(D)$、石から格子の外に向かう辺の数を $b(D)$ とする。
+例えば、格子の角の石は外に向かう辺を 2 つ、辺の石は 1 つ持つ。
+
+\begin{lemma}\label{lem:loss-terms}
+$D$ が 2-支配集合ならば
+\[
+\ell(D)=2e(D)+b(D)+\sum_{v\notin D}\bigl(|N(v)\cap D|-2\bigr)
+\]
+が成り立ち、和の各項は $0$ 以上である。
+$D$ が 2-fair 支配集合ならば、和の各項は $0$ なので $\ell(D)=2e(D)+b(D)$ である。
+\end{lemma}
+
+\begin{proof}
+石 $v$ と、上下左右の 4 つの向き $d$ の組 $(v,d)$ を考える。組は全部で $4|D|$ 個ある。
+組を、$v$ から向き $d$ に進んだ先によって 3 種類に分けて数える。
+\begin{enumerate}
+\item 石でないマス $u$ に向かう組は、$u$ ごとに $|N(u)\cap D|$ 個ある。合計は
+  $\sum_{u\notin D}|N(u)\cap D| = 2(nm-|D|)+\sum_{u\notin D}\bigl(|N(u)\cap D|-2\bigr)$ 個である。
+\item 別の石に向かう組は、隣り合う石の組 1 つにつき 2 個あるので、$2e(D)$ 個である。
+\item 格子の外に向かう組は $b(D)$ 個である。
+\end{enumerate}
+合計が $4|D|$ なので、$\ell(D)=4|D|-2(nm-|D|)$ に代入すれば式を得る。
+$D$ は 2-支配集合なので $|N(u)\cap D|\ge 2$ であり、和の各項は $0$ 以上である。
+2-fair 支配集合では $|N(u)\cap D|=2$ なので、各項は $0$ である。
+\end{proof}
+
+\paragraph{意味.}
+石は上下左右の 4 つの隣に影響を与え、石でないマスは 2 つの石から影響を受ければよい。
+loss は、影響のうち、石でないマスの必要を満たすのに使われなかった分である~\cite{GPRT,RT}。
+補題~\ref{lem:loss-terms} の 3 つの項は、それぞれ「石が石に影響を与えた分」「格子の外に向かった分」「石でないマスに 3 つ以上の石が隣り合った超過分」にあたる。
+2-fair 支配集合では、3 つ目の超過分はない。
+
+\paragraph{例.}
+次の $3\times 3$ の格子で、$\bullet$ を石とする（$|D|=5$）。
+\[
+\begin{array}{ccc}
+\bullet & \bullet & \cdot\\
+\cdot & \cdot & \bullet\\
+\bullet & \cdot & \bullet
+\end{array}
+\]
+石でないマスはどれも、ちょうど 2 つの石と隣り合うので、$D$ は 2-fair 支配集合である。
+定義から $\ell(D)=4\cdot 5-2\cdot 4=12$ である。
+補題~\ref{lem:loss-terms} では、隣り合う石の組が 2 つ（上の行の左の 2 つと、右の列の下の 2 つ）、格子の外に向かう辺が 8 つなので、
+$2\cdot 2+8=12$ となり一致する。
+また $6\cdot 5=30=2\cdot 9+12$ である。
+
+\paragraph{下界への使い方.}
+補題~\ref{lem:loss-terms} から、loss は 0 以上の局所的な項の和である。
+したがって、格子の一部だけで数えた loss は $\ell(D)$ 以下であり、その最小値の下界から、\eqref{eq:loss} によって $|D|$ の下界が得られる（\ref{sec:large} 節）。
+すなわち、すべての 2-fair 支配集合 $D$ について $\ell(D)\ge L$ ならば、$|D|\ge (2nm+L)/6$ である。
+$L$ は 6 で割り切れるとは限らないが、$|D|$ は整数なので $|D|\ge\lceil (2nm+L)/6\rceil$ としてよい。
+
+\section{小さい行数}\label{sec:small}
+
+\begin{theorem}\label{thm:small}
+$1\le n\le 10$ と、すべての $m\ge n$ について、
+\[
+\gf(n,m)=
+\begin{cases}
+\lfloor m/2\rfloor+1 & n=1,\\
+2\lceil m/2\rceil & n=2,\\
+\lfloor (7m+6)/5\rfloor+\iv{m\equiv 1 \pmod 5} & n=3,\\
+\lfloor (16m+14)/9\rfloor & n=4,\\
+\lfloor (11m+4)/5\rfloor+\iv{m\equiv 4 \pmod 5} & n=5,\\
+\lfloor (34m+24)/13\rfloor & n=6,\\
+3m+\iv{m\in\{8,9,11,12\}} & n=7,\\
+\lfloor (10m+6)/3\rfloor & n=8,\\
+\lfloor (11m+8)/3\rfloor & n=9,\\
+4m+2+\iv{m\not\equiv 1 \pmod 3} & n=10.
+\end{cases}
+\]
+\end{theorem}
+
+$n\in\{8,9,10\}$ の式は $F(n,m)$ に等しい（$m$ を 3 で割った余りごとに比べればよい）。よって主定理の $n\in\{8,9,10\}$ の場合が従う。
+
+\subsection{行ごとの動的計画法}
+$n$ を固定し、格子を幅 $n$ の行を上から 1 行ずつ積んだものと見る。
+2-fair 支配集合 $D$ について、各マスに次の状態を割り当てる~\cite{RT}。
+石には \stone を、石でないマスには、上・左・右の隣にある石の数が 2 なら \ok を、1 なら \needone を割り当てる。
+石でないマスの隣の石はちょうど 2 つなので、\ok のマスの下は石でなく、\needone のマスの下は石である。
+上・左・右の石が 0 個のマスは、下の 1 マスだけでは 2 つに届かないので現れない。
+
+行の状態の並びが矛盾を含まないものを \emph{有効な行}と呼び、上下に並べてよい 2 つの有効な行の組を \emph{両立する}と呼ぶ。
+両立の条件は、上の行の \needone の下が石であること、上の行の \ok の下が石でないこと、
+下の行の各マスの状態が、その上・左・右の石の数と合っていることである。
+最初の行の上には何もなく、最後の行には \needone がない。
+
+有効な行の集合を添字とするベクトル $V_1$ を、最初の行に置ける行ではその石の数、それ以外では $+\infty$ とし、
+$T[S][S']$ を、$S$ と $S'$ が両立するとき $S'$ の石の数、そうでなければ $+\infty$ とする。
+$(\min,+)$ 代数で $V_{r+1}=V_r\otimes T$ と進めると、$\gf(n,m)$ は、\needone を含まない行 $S$ についての $V_m[S]$ の最小値である。
+
+\begin{lemma}\label{lem:vector-period}
+$V_{r_0+1+k}=V_{r_0+1}+p$（すべての成分で成り立ち、$+\infty$ の位置も一致する）ならば、
+すべての $r\ge r_0+1$ で $V_{r+k}=V_r+p$ が成り立ち、すべての $m\ge r_0+1$ で $\gf(n,m+k)=\gf(n,m)+p$ が成り立つ。
+\end{lemma}
+
+\begin{proof}
+すべての成分に定数を足すことは $(\min,+)$ の積と交換できる: $(V+p)\otimes T=V\otimes T+p$。$r$ についての帰納法による。
+最後の段階は、決まった行の集合についての $V_m$ の最小値をとるだけである。
+\end{proof}
+
+$2\le n\le 10$ のそれぞれについて、ベクトルの等式 $V_{m_0+k}=V_{m_0}+p$ を、すべての成分で（$+\infty$ の位置も含めて）計算で確かめた（$m_0=r_0+1$）。
+その $m_0,k,p$ を次の表に示す。補題~\ref{lem:vector-period} により、$m\ge m_0$ で $\gf(n,m+k)=\gf(n,m)+p$ が成り立つ。
+最小値の列 $\gf(n,m)$ が繰り返すことだけからは、この結論は得られないことに注意する。
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$n$ & $m_0$ & $k$ & $p$\\
+\midrule
+2 & 3 & 2 & 2\\
+3 & 5 & 5 & 7\\
+4 & 10 & 9 & 16\\
+5 & 9 & 5 & 11\\
+6 & 10 & 13 & 34\\
+7 & 19 & 1 & 3\\
+8 & 14 & 3 & 10\\
+9 & 18 & 3 & 11\\
+10 & 17 & 3 & 12\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{proof}[定理~\ref{thm:small} の証明]
+$n=1$ では格子は道である。両端は $D$ に入り、$D$ に入らない 2 つの頂点が隣り合うことはないので、$\gf(1,m)=\lfloor m/2\rfloor+1$ である（\cite{Hung} の補題 13 も参照）。
+$2\le n\le 10$ では、定理~\ref{thm:small} のどの式も、表の関係を満たす
+（$p\,m/k$ の項は $p$ 増え、補正項は $m \bmod k$ だけで決まるか、$n=7$ では $m\ge 13$ で $0$ になる）。
+よって、補題~\ref{lem:vector-period} から、$n\le m< m_0+k$ の範囲で式と計算した値を比べれば十分である。
+この範囲は $m\le 22$ に収まり、計算では $m\le 50$ まで一致を確かめた。
+\end{proof}
+
+\section{大きい行数: 縁の loss}\label{sec:large}
+
+この節では、主定理の $n\ge 11$ の場合を示す。
+
+\begin{proposition}\label{prop:large}
+$11\le n\le m$ ならば $\gf(n,m)\ge F(n,m)$。
+\end{proposition}
+
+\subsection{縁}
+$c$ を固定する（あとで $c=5$ とする）。$n,m\ge 2c+1$ のとき、$G_{n,m}$ の \emph{縁}を、格子の境界からの距離が $c$ 未満のマスの集合とする。
+縁は、4 つの角と 4 本の帯に分ける（\ref{sec:transfer} 節）。
+各角は、格子の隅の $c\times c$ の正方形と、そのすぐ外の幅 $c$ の 1 行（出力の行）からなる。
+帯は、格子の境界から内側に向かう幅 $c$ の行の並びで、長さは $n-2c-1$ と $m-2c-1$ である。
+帯の行（角の出力の行も含む）の、格子の境界から最も遠いマスを、その行の\emph{内側の端}と呼ぶ。
+$n,m\ge 2c+1$ なので、内側の端のさらに内側にあるマスは、縁に入らない内部のマスである。
+
+\paragraph{ゆるめた問題.}
+縁を $R$ とする。$R$ の部分集合 $D_R$ が \emph{縁の解}であるとは、石でないすべての縁のマス $v\in R\setminus D_R$ について
+\begin{equation}\label{eq:relaxed}
+|N(v)\cap D_R|\le 2\le |N(v)\cap D_R|+|N(v)\setminus R|
+\end{equation}
+が成り立つことをいう。
+つまり、縁の中の石の隣接は 2 つを超えてはならず、足りない分は、縁の外の隣のマスの数まで補ってよい。
+補う石は、縁のマスごとに独立に考える（内部の石の置き方を 1 つに決めて共通に使う必要はない）。
+$|N(v)\setminus R|$ が正になるのは、帯の行の内側の端のマスだけで、その値は $1$ である。
+縁の解 $D_R$ の loss を
+\[
+\ell_R(D_R)=2e(D_R)+b(D_R)
+\]
+とする。ここで $e(D_R)$ は $D_R$ の中の辺の数、$b(D_R)$ は $D_R$ の石から格子の外に向かう辺の数である。
+縁の解についての $\ell_R$ の最小値を $L_c(n,m)$ とする。
+
+$G_{n,m}$ のどの 2-fair 支配集合 $D$ についても、$D_R=D\cap R$ は縁の解である。
+実際、$v\in R\setminus D_R$ について $|N(v)\cap D|=2$ であり、$N(v)\cap D$ のうち $R$ に入るものが $N(v)\cap D_R$、入らないものは $N(v)\setminus R$ に含まれるので、\eqref{eq:relaxed} が成り立つ。
+また、$e(D_R)\le e(D)$、$b(D_R)\le b(D)$ なので、補題~\ref{lem:loss-terms} から $\ell_R(D_R)\le\ell(D)$ である。
+よって $L_c(n,m)\le\ell(D)$ であり、\eqref{eq:loss} から
+\begin{equation}\label{eq:border}
+\gf(n,m)\ge \left\lceil\frac{2nm+L_c(n,m)}{6}\right\rceil
+\end{equation}
+を得る。
+
+\subsection{転送行列}\label{sec:transfer}
+
+マス $(i,j)$ を、上から $i$ 行目、左から $j$ 列目とする（$0\le i<n$, $0\le j<m$）。
+縁は、左上の角から反時計回りに、左の帯、左下の角、下の帯、右下の角、右の帯、右上の角、上の帯の順に一周する。
+帯は、格子の境界から内側に向かう幅 $c$ の行を、一周の向きに 1 行ずつ積んだものと見る。
+各行の左端は格子の境界に、右端（内側の端）は内部に接する。
+左上の角は、正方形 $Q=\{(i,j): 0\le i,j<c\}$ と出力の行（格子の行 $c$ のマス $(c,0),\dots,(c,c-1)$）からなる。
+左の帯の行は格子の行 $c+1,\dots,n-c-1$ であり、上の帯の行は格子の列 $c,\dots,m-c-2$ で、右から左へ積まれる。
+
+$B[S][S']$ は、帯の行 $S$ の次に行 $S'$ を置けるとき、$S'$ を置いたことで増える loss、置けないとき $+\infty$ である。
+状態と両立の条件は \ref{sec:small} 節と同じで（「下」を一周の向きの次の行と読みかえる）、右端のマスだけは内部から石を受け取ってよいとする。
+
+$C[S][S']$ は、左上の角についての行列である。
+入力は上の帯の最後の行（格子の列 $c$ のマス $(0,c),\dots,(c-1,c)$）で、その状態が $S$、
+出力は角の出力の行（格子の行 $c$）で、その状態が $S'$ である。
+$C[S][S']$ は、この入力と出力をもつ角の状態の割り当てについての、角の中の loss と、入力の行と $Q$ の間の loss の和の最小値である。
+入力の行そのものの loss は上の帯の $B$ で、出力の行と左の帯の次の行の間の loss は次の $B$ で数える。
+ほかの 3 つの角は、格子を回転させて同じ行列 $C$ で扱う。
+この数え分けで、ゆるめた問題で数える loss の各項がちょうど 1 回ずつ数えられる（付録~\ref{app:border}）。
+
+\begin{lemma}\label{lem:border-matrix}
+$n,m\ge 2c+1$ のとき
+\[
+L_c(n,m)=\min_s\bigl(C B^{n-2c-1} C B^{m-2c-1} C B^{n-2c-1} C B^{m-2c-1}\bigr)[s][s].
+\]
+\end{lemma}
+
+指数が $n-2c-1$ になるのは、左の帯の行が格子の行 $c+1,\dots,n-c-1$ の $n-2c-1$ 行で、
+左上の角の出力の行（格子の行 $c$）から $B$ を $n-2c-1$ 回掛けると、左の帯の最後の行、つまり左下の角の入力に達するからである。
+証明は付録~\ref{app:border} で述べる。
+
+\begin{lemma}\label{lem:band-period}
+$c=5$ のとき $B^{28+3}=B^{28}+6$（すべての成分で成り立ち、$+\infty$ の位置も一致する）。
+よって、すべての $a\ge 28$ で $B^{a+3}=B^a+6$ が成り立つ。
+\end{lemma}
+
+\begin{proof}
+前半は計算で確かめる（有効な行は 111 個）。後半は、補題~\ref{lem:vector-period} と同様に、両辺に $B$ を掛けて得られる。
+\end{proof}
+
+\begin{proof}[命題~\ref{prop:large} の証明]
+$c=5$ とし、$\mathrm{LB}(n,m)=\lceil (2nm+L_5(n,m))/6\rceil$ とおく。
+
+\emph{有限個の確認.} $11\le n\le m\le 41$ のすべてで $L_5(n,m)$ を計算すると、どの場合も $\mathrm{LB}(n,m)=F(n,m)$ となる（計算では $m\le 50$ まで確かめた）。
+
+\emph{帰納法.} $n\ge 39$ なら、長さ $n-11\ge 28$ の 2 本の帯は、$n$ が 3 増えるとそれぞれ 6 増える（補題~\ref{lem:band-period}）。よって $L_5(n+3,m)=L_5(n,m)+12$ であり、
+\[
+2(n+3)m+L_5(n+3,m)=2nm+L_5(n,m)+6(m+2).
+\]
+$6(m+2)$ は 6 の倍数なので、$\mathrm{LB}(n+3,m)=\mathrm{LB}(n,m)+m+2$。
+一方、$(n+5)(m+2)-(n+2)(m+2)=3(m+2)$ かつ $n+3\equiv n \pmod 3$ なので、$F(n+3,m)=F(n,m)+m+2$。
+$m$ についても同じである。
+$n$ や $m$ が 42 以上なら、3 を引いても 39 以上にとどまるので、3 を引き続けて有限個の確認の範囲に戻せる。
+したがって、すべての $11\le n\le m$ で $\mathrm{LB}(n,m)=F(n,m)$ であり、\eqref{eq:border} より $\gf(n,m)\ge F(n,m)$。
+\end{proof}
+
+\section{計算}\label{sec:computation}
+
+計算は Rust で書いたプログラムで行った（TODO: 公開場所）。
+行の状態と両立の条件、loss の数え方、角の動的計画法、周期の判定（補題~\ref{lem:vector-period}, \ref{lem:band-period}）は、
+2-支配と 2-fair 支配で共通の実装を使い、違いは両立の条件（2-fair では、石でないマスの隣の石が 3 つ以上になることを禁じる）だけである。
+小さい盤では、すべての置き方を調べた結果と動的計画法の結果が一致することを確かめた。
+
+\paragraph{再現の方法.}
+証明に使う計算は、次の 2 つである。
+\begin{itemize}
+\item 小さい行数（\ref{sec:small} 節）: $2\le n\le 10$ のそれぞれで、ベクトルの等式 $V_{m_0+k}=V_{m_0}+p$ と、$n\le m<m_0+k$ の値（計 95 個）が定理~\ref{thm:small} の式に一致すること。
+\item 大きい行数（\ref{sec:large} 節）: 帯の行列の等式 $B^{31}=B^{28}+6$ と、$11\le n\le m\le 41$ の 496 個の場合に $\mathrm{LB}(n,m)=F(n,m)$ となること。
+\end{itemize}
+これらの値は、プログラムの \texttt{scripts/collect\_fair2.sh} で計算し、\texttt{results/fair2/} に保存した（TODO: 公開場所とコミット）。
+保存した値が、定理~\ref{thm:small} の式、周期の表、補題~\ref{lem:band-period} の等式、$F(n,m)$ と一致することは、\texttt{scripts/verify\_fair2.py} で自動的に照合できる。
+2-支配での検証には \texttt{scripts/collect\_dom2.sh} を用いた。
+
+\paragraph{2-支配での検証.}
+同じプログラムを 2-支配に使うと、Rao と Talon~\cite{RT} の結果を再現する。
+$c=6$ の帯の行列は $B^{20+3}=B^{20}+6$ を満たす。
+縁の下界は $13\le n\le m\le 40$ のすべてで $\lfloor (n+2)(m+2)/3\rfloor-6$ に等しく、これは~\cite{RT} が確認した範囲 $13\le n\le m\le 35$ を含む。
+$2\le n\le 12$ では、関係 $\gamma_2(n,m+k)=\gamma_2(n,m)+p$ の $k$ と $p$ が~\cite{RT} と一致し、
+$m\le 50$ の厳密な値は、次の注意の式（$n=4,7,8$）と~\cite{RT} の定理 1 の式（それ以外）に一致する。
+厳密な値は、$n=7,8$、$m\le 34$ で、彼らのプログラムの出力とも一致する。
+
+\begin{remark}
+\cite{RT} の定理 1 の式のいくつかは、彼らのプログラム（および我々のプログラム）の出力と一致しない。
+彼ら自身の関係から導くと、正しい値は
+$\gamma_2(4,m)=\lfloor (7m+6)/4\rfloor$、
+$\gamma_2(7,m)=\lfloor (53m+27)/18\rfloor-\iv{m\equiv 7 \pmod{18}}-\iv{m\in\{8,9\}}$、
+$\gamma_2(8,m)=\lfloor (10m+4)/3\rfloor$
+である（$n=7$ の 2 つの場合は同じ式で書かれており、$m=25$ での値は 74 である）。
+\end{remark}
+
+\appendix
+\section{縁の転送行列の詳細}\label{app:border}
+
+\paragraph{帯の行列 $B$ の重み.}
+$B[S][S']$ の重みは、$S'$ の左端の石が格子の外に向かう辺の数（$1$）、$S'$ の中で隣り合う石の組ごとの $2$、$S$ と $S'$ で隣り合う石の組ごとの $2$ の和である。
+
+\paragraph{角の行列 $C$ の条件と重み.}
+入力の行は上の帯の行なので、その \ok, \needone は、左隣のマス $(i,c-1)$（$Q$ の右端の列）についての条件である。
+出力の行の \ok, \needone は、下のマス $(c+1,j)$（左の帯の次の行）についての条件である。
+$C[S][S']$ は、$Q$ と出力の行の各マスへの状態の割り当てで、次の条件を満たすものについての、重みの最小値（なければ $+\infty$）である。
+\begin{enumerate}
+\item $Q$ の行と出力の行は、上の行から順に \ref{sec:small} 節の両立の条件を満たす。最初の行（格子の行 $0$）は上が格子の外であり、どの行も左端が格子の外に接する。
+  出力の行の状態は $S'$ である。出力の行の右端は内部に接するので、その状態の条件はゆるめる。
+\item \emph{接合部.} $Q$ の右端の列のマス $(i,c-1)$（$0\le i<c$）の状態は、その上・左・右（右は入力のマス $(i,c)$）の石の数と合っている。
+  入力のマス $(i,c)$ が \needone なら $(i,c-1)$ は石であり、\ok なら $(i,c-1)$ は石でない。
+\end{enumerate}
+重みは、$Q$ と出力の行の石が格子の外に向かう辺の数と、$Q$ と出力の行の中で隣り合う石の組ごとの $2$ と、入力のマス $(i,c)$ と $(i,c-1)$ がともに石である組ごとの $2$ の和である。
+$C$ は、入力の状態 $S$ ごとに、$Q$ と出力の行を行ごとの動的計画法で求める。
+
+\begin{proof}[補題~\ref{lem:border-matrix} の証明]
+左上の角の入力の状態を $s$ として一周する。
+左の帯の $n-2c-1$ 行の後に左下の角の入力に達することは本文で述べた。ほかの角と帯も同じで、一周すると上の帯の最後の行、つまり左上の角の入力に戻るので、対角成分 $[s][s]$ をとる。
+
+ゆるめた問題で数える loss の各項が、ちょうど 1 回ずつ数えられることを確かめる。
+縁の石が格子の外に向かう辺は、その石を含む帯の行の $B$ か、角の $C$ で 1 回数える。
+縁の中で隣り合う 2 つの石の組は、次のどれか 1 つにあたる:
+同じ帯の行の中（その行を置く $B$）、帯の隣り合う 2 行（後の行を置く $B$）、
+角の中（$C$）、$Q$ の右端の列と入力の行（$C$）、角の出力の行と次の帯の行（$B$）。
+格子の上下左右の隣接だけを考えるので、帯と角の間の隣接はこれで尽くされる。
+帯の行と角の出力の行の内側の端と、内部のマスとの隣接は、どの行列でも数えず、状態の条件もゆるめている。
+この状態の条件は、各マスで条件~\eqref{eq:relaxed} を課すことにあたる。
+内側の端のマスでは、内部の隣のマスから石を 1 つまで補ってよく、ほかのマスでは、縁の中の隣の石がちょうど 2 つである。
+補う石はマスごとに独立に選ばれ、互いに整合することは要求しない。
+$n,m\ge 2c+1$ なので、向かい合う帯や角どうしが、内部を挟まずに接することはない。
+それ以外の縁の中の隣接と状態の条件は、\ref{sec:small} 節と同じに扱われる。
+よって、$s$ を固定した一周の重みの最小値は、入力の状態が $s$ であるゆるめた問題の最小の loss であり、$s$ について最小をとると $L_c(n,m)$ になる。
+\end{proof}
+
+\begin{thebibliography}{9}
+\bibitem{CHH} Y.~Caro, A.~Hansberg, M.~Henning, Fair domination in graphs, \emph{Discrete Mathematics} 312 (2012) 2905--2914.
+\bibitem{CCV} B.~Chaluvaraju, M.~Chellali, K.~A.~Vidya, Perfect $k$-domination in graphs, \emph{Australasian Journal of Combinatorics} 48 (2010) 175--184.
+\bibitem{GPRT} D.~Gon\c{c}alves, A.~Pinlou, M.~Rao, S.~Thomass\'e, The domination number of grids, \emph{SIAM Journal on Discrete Mathematics} 25 (2011) 1443--1453.
+\bibitem{Hung} R.-W.~Hung, Fair domination on extended supergrid graphs: complexity, linear-time algorithms, and ILP formulations, \emph{Mathematics} 14 (2026) 947.
+\bibitem{RT} M.~Rao, A.~Talon, The 2-domination and Roman domination numbers of grid graphs, \emph{Discrete Mathematics \& Theoretical Computer Science} 21(1) (2019) \#9.
+\end{thebibliography}
+
+\end{document}
